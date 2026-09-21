@@ -14,6 +14,7 @@ import { runInterceptor } from '../harness/interceptor.js';
 import { verifyAcceptanceGate } from '../harness/acceptance-gate.js';
 import { loadSession } from '../harness/cycle-detector.js';
 import { isDestructiveAction } from '../harness/jev-client.js';
+import { getDecisionSummary, formatDecisionSummary, getDecisionHistory, clearDecisionHistory } from '../harness/decision-tracker.js';
 
 const rawArgs = process.argv.slice(2);
 const hookCommands = ['pre-tool', 'preToolUse', 'post-tool', 'postToolUse', 'preExit', 'pre-exit'];
@@ -25,6 +26,28 @@ if (isHookInvocation) {
     console.error(err.stack || '(no stack trace available)');
     process.exit(0);
   });
+} else if (rawArgs.includes('decisions') || rawArgs.includes('tracker') || rawArgs.includes('audit')) {
+  const targetDirIndex = rawArgs.indexOf('--target-dir');
+  let targetDir = targetDirIndex !== -1 && rawArgs[targetDirIndex + 1] ? rawArgs[targetDirIndex + 1] : process.cwd();
+  if (targetDir) targetDir = path.resolve(targetDir.replace(/^["']|["']$/g, ''));
+  const sessionIndex = rawArgs.indexOf('--session');
+  const sessionId = sessionIndex !== -1 && rawArgs[sessionIndex + 1] ? rawArgs[sessionIndex + 1].replace(/^["']|["']$/g, '') : null;
+
+  if (rawArgs.includes('--clear')) {
+    clearDecisionHistory({ targetDir });
+    console.log('[AEGIS TRACKER]: Decision audit history cleared.');
+    process.exit(0);
+  }
+
+  if (rawArgs.includes('--json')) {
+    const history = getDecisionHistory({ targetDir, sessionId, limit: 100 });
+    console.log(JSON.stringify(history, null, 2));
+    process.exit(0);
+  }
+
+  const summary = getDecisionSummary({ targetDir, sessionId });
+  console.log(formatDecisionSummary(summary));
+  process.exit(0);
 } else if (rawArgs.includes('verify') || rawArgs.includes('gate') || rawArgs.includes('verify-gate')) {
   const targetDirIndex = rawArgs.indexOf('--target-dir');
   const targetDir = targetDirIndex !== -1 && rawArgs[targetDirIndex + 1] ? rawArgs[targetDirIndex + 1] : process.cwd();
@@ -70,6 +93,7 @@ Commands:
   install, init         Install hook configurations into current or target workspace
   verify, gate          Run the 3-Stage Acceptance Gate verification pipeline
   check-cycle           Inspect active session history and loop circuit breaker status
+  decisions, tracker    Inspect Jev & interceptor cognitive decision audit trail
   test:veto             Simulate a destructive command veto (exits with code 2)
 
 Options:

@@ -13,6 +13,7 @@ export * from './harness/cycle-detector.js';
 export * from './harness/runner-parser.js';
 export * from './harness/acceptance-gate.js';
 export * from './harness/sensitive-guard.js';
+export * from './harness/decision-tracker.js';
 export * from './harness/interceptor.js';
 export * from './harness/install.js';
 

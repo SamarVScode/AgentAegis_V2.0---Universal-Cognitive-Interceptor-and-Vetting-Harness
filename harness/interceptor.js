@@ -21,6 +21,7 @@ import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
 import { lintCoreLaws, formatCoreLawsReport } from './core-laws-linter.js';
 import { verifyAcceptanceGate } from './acceptance-gate.js';
+import { recordDecision } from './decision-tracker.js';
 
 const rawArgs = process.argv.slice(2);
 const engineIdx = rawArgs.indexOf('--engine');
@@ -263,6 +264,16 @@ export async function runInterceptor() {
       if (sensitiveInCmd.isSensitive) {
         const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION, true);
         if (!secResult.approved) {
+          recordDecision({
+            sessionId,
+            source: 'sensitive_guard',
+            decisionType: 'security_exfiltration_veto',
+            toolName,
+            inputSummary: cmdStr,
+            passed: false,
+            verdict: 'vetoed',
+            reason: secResult.reason
+          });
           console.error(secResult.reason);
           process.exit(2);
         }
@@ -277,6 +288,16 @@ export async function runInterceptor() {
         process.exit(0);
       }
       if (!secResult.approved) {
+        recordDecision({
+          sessionId,
+          source: 'sensitive_guard',
+          decisionType: 'credential_read_veto',
+          toolName,
+          inputSummary: targetFile,
+          passed: false,
+          verdict: 'vetoed',
+          reason: secResult.reason
+        });
         console.error(secResult.reason);
         process.exit(2); // Hard exit 2 veto
       }
@@ -285,6 +306,16 @@ export async function runInterceptor() {
     // Step 2: Diff Variance Cycle Detector & Thrashing Circuit Breaker (Universal)
     const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId);
     if (cycle.isThrashing) {
+      recordDecision({
+        sessionId,
+        source: 'cycle_detector',
+        decisionType: 'cycle_thrash_veto',
+        toolName,
+        inputSummary: `${targetFile} (diff hash: ${cycle.diffHash || 'unknown'})`,
+        passed: false,
+        verdict: 'vetoed',
+        reason: cycle.critique
+      });
       console.error(cycle.critique);
       process.exit(2); // Hard block repetitive thrashing
     }
@@ -296,6 +327,16 @@ export async function runInterceptor() {
     if (wholeFileContent && (toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit'))) {
       const lintResult = lintCoreLaws(wholeFileContent, targetFile);
       if (!lintResult.clean) {
+        recordDecision({
+          sessionId,
+          source: 'core_laws_linter',
+          decisionType: 'code_invariant_violation',
+          toolName,
+          inputSummary: targetFile,
+          passed: false,
+          verdict: 'vetoed',
+          reason: `Violated ${lintResult.violations.length} core law(s)`
+        });
         console.error(formatCoreLawsReport(lintResult.violations));
         process.exit(2); // Hard block universal code invariant violation
       }
@@ -313,11 +354,34 @@ export async function runInterceptor() {
           isDestructive: true
         });
 
+        recordDecision({
+          sessionId,
+          source: 'jev_system_one',
+          decisionType: 'destructive_vetting',
+          toolName,
+          inputSummary: cmdStr || targetFile || toolName,
+          passed: jevCheck.approved,
+          verdict: jevCheck.approved ? 'approved' : 'vetoed',
+          noul: jevCheck.noul,
+          probability: jevCheck.probability,
+          reason: jevCheck.reason
+        });
+
         if (!jevCheck.approved) {
           console.error(`[JEV SAFETY VETO]: Operation '${toolName}' blocked by Jev safety filter: ${jevCheck.reason || 'High risk of destructive data loss.'}`);
           process.exit(2);
         }
       } catch (vetErr) {
+        recordDecision({
+          sessionId,
+          source: 'jev_system_one',
+          decisionType: 'destructive_vetting_error',
+          toolName,
+          inputSummary: cmdStr || targetFile || toolName,
+          passed: false,
+          verdict: 'vetoed',
+          reason: `Vetting error: ${vetErr.message}. Enforcing hard fail-closed.`
+        });
         console.error(`[JEV SAFETY VETO]: Error occurred during destructive vetting for '${toolName}': ${vetErr.message}. Enforcing hard fail-closed.`);
         process.exit(2);
       }
@@ -342,14 +406,6 @@ export async function runInterceptor() {
       saveSession(session, sessionId);
     }
 
-    // Test-runner outcome tracking via PostToolUse payload fields:
-    //   stdinData.tool_name       - e.g. 'Bash'
-    //   stdinData.tool_input.command - the command string
-    //   stdinData.tool_result.is_error - true if command failed
-    //   stdinData.tool_result.output   - combined stdout/stderr
-    // Known gap: make test, ./run-tests.sh, jest, vitest, mocha, deno test bypass this check
-    // NOTE: session ID must be stable (CLAUDE_CONVERSATION_ID exported) for the session
-    // written here by PostToolUse to be the same session read by the Stop hook.
     const TEST_RUNNER_PATTERN = /^(npm|yarn|pnpm|bun)\s+test|pytest|cargo\s+test|go\s+test|node\s+.*test|gradlew\s+test/i;
     const TEST_OUTPUT_FAIL_MARKERS = /passing|failing|failed|PASSED|FAILED|tests?\s+passed|test suite|AssertionError|FAIL\b/i;
 
@@ -364,12 +420,31 @@ export async function runInterceptor() {
           // Genuine test failure with test output - not a timeout or spawn error
           testSession.lastTestPassed = false;
           saveSession(testSession, sessionId);
+          recordDecision({
+            sessionId,
+            source: 'test_runner',
+            decisionType: 'post_tool_test_tracking',
+            toolName: 'Bash',
+            inputSummary: cmd,
+            passed: false,
+            verdict: 'failed',
+            reason: 'Test runner exited with failure markers'
+          });
         } else if (toolIsError === false) {
           // Clean exit - tests passed
           testSession.lastTestPassed = true;
           saveSession(testSession, sessionId);
+          recordDecision({
+            sessionId,
+            source: 'test_runner',
+            decisionType: 'post_tool_test_tracking',
+            toolName: 'Bash',
+            inputSummary: cmd,
+            passed: true,
+            verdict: 'passed',
+            reason: 'Test runner exited cleanly with code 0'
+          });
         }
-        // If toolIsError=true but no test output markers: timeout/spawn error - write nothing
       }
     }
 
@@ -384,6 +459,19 @@ export async function runInterceptor() {
     const customCmd = arg1 || stdinData.command || stdinData.customCommand || null;
     const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
     const gateResult = await verifyAcceptanceGate(customCmd, process.cwd(), agentStatement, sessionId);
+
+    recordDecision({
+      sessionId,
+      source: 'acceptance_gate',
+      decisionType: gateResult.stage || 'acceptance_gate',
+      toolName: 'verifyAcceptanceGate',
+      inputSummary: agentStatement || customCmd || 'completion check',
+      passed: gateResult.passed,
+      verdict: gateResult.passed ? 'passed' : 'vetoed',
+      reason: gateResult.reason,
+      probability: gateResult.probability,
+      metadata: { exitCode: gateResult.exitCode, testsRun: gateResult.testsRun }
+    });
 
     if (gateResult.passed) {
       console.error(`\n======================================================`);

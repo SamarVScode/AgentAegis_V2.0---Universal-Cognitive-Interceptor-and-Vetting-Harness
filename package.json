@@ -23,7 +23,8 @@
     "test:aegis": "node test/test-dynamic-harness.js",
     "test:v2": "node test/test-aegis-v2-mitigations.js",
     "test:enhancements": "node test/test-enhancements.js",
-    "test:all": "node test/test-dynamic-harness.js && node test/test-aegis-v2-mitigations.js && node test/test-enhancements.js && node test.js",
+    "test:tracker": "node test/test-decision-tracker.js",
+    "test:all": "node test/test-dynamic-harness.js && node test/test-aegis-v2-mitigations.js && node test/test-enhancements.js && node test/test-decision-tracker.js && node test.js",
     "test:hooks": "node test/test-live-hooks.mjs",
     "install:hooks": "node harness/install.js"
   },
