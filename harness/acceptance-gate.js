@@ -9,14 +9,93 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exec } from 'child_process';
+import { exec, spawn } from 'child_process';
 import { promisify } from 'util';
 import { detectWorkspaceEcosystem } from './manifest-sniffer.js';
 import { parseTestRunnerOutput, triageStderr } from './runner-parser.js';
 import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
 import { loadSession } from './cycle-detector.js';
 
-const execAsync = promisify(exec);
+export function safeSpawnAsync(commandStr, options = {}) {
+  return new Promise((resolve, reject) => {
+    const tokens = (commandStr || '').trim().match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+    if (tokens.length === 0) {
+      return reject({ stdout: '', stderr: 'Empty command', code: 1 });
+    }
+
+    let executable;
+    let spawnArgs;
+
+    if (process.platform === 'win32') {
+      executable = process.env.ComSpec || 'cmd.exe';
+      spawnArgs = ['/d', '/s', '/c', commandStr];
+    } else {
+      executable = tokens[0].replace(/^["']|["']$/g, '');
+      spawnArgs = tokens.slice(1).map(t => t.replace(/^["']|["']$/g, ''));
+    }
+
+    const timeout = options.timeout || 45000;
+    const maxBuffer = options.maxBuffer || 10 * 1024 * 1024;
+    let stdout = '';
+    let stderr = '';
+    let timedOut = false;
+    let maxBufferExceeded = false;
+
+    let child;
+    try {
+      child = spawn(executable, spawnArgs, {
+        cwd: options.cwd || process.cwd(),
+        env: options.env || { ...process.env, CI: 'true', FORCE_COLOR: '0' },
+        windowsHide: true,
+        shell: false
+      });
+    } catch (err) {
+      return reject({ stdout: '', stderr: err.message, code: 1, error: err });
+    }
+
+    const timer = setTimeout(() => {
+      timedOut = true;
+      try { child.kill('SIGTERM'); } catch {}
+    }, timeout);
+
+    child.stdout?.on('data', chunk => {
+      if (stdout.length + chunk.length > maxBuffer) {
+        maxBufferExceeded = true;
+        try { child.kill('SIGTERM'); } catch {}
+      } else {
+        stdout += chunk.toString();
+      }
+    });
+
+    child.stderr?.on('data', chunk => {
+      if (stderr.length + chunk.length > maxBuffer) {
+        maxBufferExceeded = true;
+        try { child.kill('SIGTERM'); } catch {}
+      } else {
+        stderr += chunk.toString();
+      }
+    });
+
+    child.on('error', err => {
+      clearTimeout(timer);
+      reject({ stdout, stderr, code: 1, message: err.message, error: err });
+    });
+
+    child.on('close', code => {
+      clearTimeout(timer);
+      if (timedOut) {
+        return reject({ stdout, stderr, code: 124, killed: true, message: 'Process timed out' });
+      }
+      if (maxBufferExceeded) {
+        return reject({ stdout, stderr, code: 1, isMaxBuffer: true, message: 'maxBuffer exceeded' });
+      }
+      if (code !== 0) {
+        return reject({ stdout, stderr, code: code ?? 1 });
+      }
+      resolve({ stdout, stderr, code: 0 });
+    });
+  });
+}
 
 export function extractVerifiableClaims(statementText = '') {
   if (!statementText || typeof statementText !== 'string') {
@@ -163,11 +242,10 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   let isMaxBuffer = false;
 
   try {
-    const res = await execAsync(testCommand, {
+    const res = await safeSpawnAsync(testCommand, {
       cwd: effectiveTargetDir,
       timeout: 45000,
       maxBuffer: 10 * 1024 * 1024,
-      windowsHide: true,
       env: { ...process.env, CI: 'true', FORCE_COLOR: '0' }
     });
     stdout = res.stdout || '';
@@ -175,10 +253,10 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   } catch (err) {
     stdout = err.stdout || '';
     stderr = err.stderr || '';
-    if (err.killed || err.signal === 'SIGTERM' || (typeof err.message === 'string' && err.message.includes('timed out'))) {
+    if (err.killed || (typeof err.message === 'string' && err.message.includes('timed out'))) {
       isTimeout = true;
       exitCode = 124;
-    } else if (err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+    } else if (err.isMaxBuffer || err.code_name === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
       isMaxBuffer = true;
       exitCode = 1;
     } else {

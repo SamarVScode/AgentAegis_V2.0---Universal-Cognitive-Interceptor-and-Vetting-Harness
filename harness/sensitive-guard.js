@@ -108,7 +108,11 @@ export function inspectCommandForSensitivePaths(cmdStr = '', workspaceDir = proc
     /(^|[\s"'/\=@])\.config[/\\]gcloud[/\\]/i,
     /(^|[\s"'/\=@])\.kube[/\\]/i,
     /\b(credentials|secrets|token|auth_token)\.(json|yaml|yml|xml)\b/i,
-    /\b[\w.-]+\.(pem|key|pkcs12|pfx|p12)\b/i
+    /\b[\w.-]+\.(pem|key|pkcs12|pfx|p12)\b/i,
+    /\bbase64\s+(-d|--decode)\b/i,
+    /\b(curl|wget)\b.*(-d|--data|-F|--upload-file|--post-file)\s*['"]?@/i,
+    /\b(cat|type|head|tail|more|less|Get-Content|gc)\s+.*(\.env|id_rsa|id_ed25519|passwd|shadow|\.aws|\.kube)/i,
+    /\b(fs\.readFileSync|open\s*\()[^)]*(\.env|id_rsa|id_ed25519|passwd|shadow)/i
   ];
 
   const customPatterns = getCustomDenyPatterns(workspaceDir);
@@ -127,10 +131,11 @@ export function inspectCommandForSensitivePaths(cmdStr = '', workspaceDir = proc
  * Fastpath: Benign source files are approved with 0 tokens and 0 latency.
  * Escalation: Sensitive patterns trigger Jev security classifier.
  */
-export async function evaluatePathSecurity(toolName = '', targetPath = '', taskContext = '') {
+export async function evaluatePathSecurity(toolName = '', targetPath = '', taskContext = '', forceSensitive = false) {
   const normalizedPath = targetPath ? path.normalize(String(targetPath)).replace(/\\/g, '/').replace(/^\.\//, '') : '';
   const isRead = isReadInspectionTool(toolName);
-  const isSensitive = isSensitivePath(normalizedPath) || isSensitivePath(targetPath);
+  const cmdSensitive = inspectCommandForSensitivePaths(targetPath).isSensitive;
+  const isSensitive = Boolean(forceSensitive) || isSensitivePath(normalizedPath) || isSensitivePath(targetPath) || cmdSensitive;
 
   // Fastpath: If read operation targets standard code and not sensitive, pass at 0 tokens
   if (isRead && !isSensitive) {

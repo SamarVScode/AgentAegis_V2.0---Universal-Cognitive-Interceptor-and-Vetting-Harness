@@ -7,6 +7,7 @@ node_modules/
 
 # Generated evaluation and benchmark JSON artifacts (Issue 10)
 test/*.json
+benchmarks/
 .aegis-harness/
 .aegis-session
 

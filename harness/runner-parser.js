@@ -125,6 +125,11 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
       if (/No tests found|No test files found/i.test(combined)) {
         return { passed: false, reason: 'Test runner executed with exit 0, but reported: No tests found.' };
       }
+
+      // Generic success marker: "All passed successfully", "All N tests passed"
+      if (/All\s+(passed successfully|\d+\s+tests\s+passed)/i.test(combined)) {
+        return { passed: true, testsRun: 1 };
+      }
       break;
     }
 

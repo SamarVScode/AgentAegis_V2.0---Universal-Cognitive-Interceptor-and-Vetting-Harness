@@ -1,11 +1,11 @@
-# AgentAegis (agent-aegis / aegis)
-## Universal Cognitive Interceptor & Vetting Harness for Autonomous Coding Agents
+# AgentAegis (`@samarvscode/aegis`)
+## Universal Cognitive Interceptor & Vetting Middleware for Autonomous Coding Agents
 
 [Decision Engine: typesafe/jev-1.13.0](https://typesafe.ai) | [Verification: 11/11 Modules Pass](file:///C:/Users/User/Desktop/jev-mcp/test/test-dynamic-harness.js) | [Live Hooks: 100% Pass](file:///C:/Users/User/Desktop/jev-mcp/test/test-live-hooks.mjs) | [License: MIT](file:///C:/Users/User/Desktop/jev-mcp/LICENSE)
 
-AgentAegis is a zero-overhead, production-grade cognitive interceptor and vetting harness for autonomous coding agents, including Claude Code, Cursor, Antigravity, and Cline. Powered directly by TypeSafe AI Jev (model `jev-1.13.0` via `/v1/systemone`), AgentAegis decouples tactical safety, cycle prevention, token bounding, and build verification from generative LLM code synthesis.
+AgentAegis is an open-source lifecycle interceptor and validation middleware designed for autonomous coding environments, including Claude Code, Cursor, and Google Antigravity. It connects to developer lifecycle hooks (`PreToolUse`, `PostToolUse`, and `Stop`) to provide execution filtering, loop cycle detection, credential path screening, and automated test-suite gating before agent completion.
 
-While frontier models handle multi-turn coding logic, AgentAegis intercepts lifecycle hooks (`PreToolUse`, `PostToolUse`, and `Stop`), halts destructive terminal commands, terminates repetitive thrashing cycles, enforces workspace domain rules, bounds token expenditure, and deterministically validates test execution before agent termination.
+By decoupling lifecycle validation from the generative model synthesizing code, the harness enforces policy checks using local deterministic rules and TypeSafe AI Jev (`jev-1.13.0`) for semantic evaluations.
 
 ---
 
@@ -13,7 +13,7 @@ While frontier models handle multi-turn coding logic, AgentAegis intercepts life
 1. [The Decoupled Decider-Actuator Architecture](#the-decoupled-decider-actuator-architecture)
 2. [Core Failure Modes Mitigated](#core-failure-modes-mitigated)
 3. [The Three-Pillar Token Optimization Architecture](#the-three-pillar-token-optimization-architecture)
-4. [Real-World Empirical Benchmark (Adjudicated by Jev System One)](#real-world-empirical-benchmark-adjudicated-by-jev-system-one)
+4. [Empirical Multi-Turn Case Study](#empirical-multi-turn-case-study)
 5. [Granular Module Breakdown](#granular-module-breakdown)
 6. [Large Codebase & 500+ MB Dataset Scalability](#large-codebase--500-mb-dataset-scalability)
 7. [Installation & Multi-Engine Setup](#installation--multi-engine-setup)
@@ -25,90 +25,92 @@ While frontier models handle multi-turn coding logic, AgentAegis intercepts life
 
 ## The Decoupled Decider-Actuator Architecture
 
-Standard autonomous agents use a single monolithic LLM for both generative coding and tactical self-governance. This architecture suffers from three systemic vulnerabilities:
-1. **Compounding Context Bloat**: Every tool output, file read, and status poll accumulates in the conversation history, resulting in millions of redundant wire tokens.
-2. **Self-Grading Bias**: Generative models routinely hallucinate success, declaring tasks complete while tests fail silently.
-3. **Unbounded Thrashing**: When an agent hits a subtle bug, it often oscillates between identical flawed edits across dozens of turns.
+Standard autonomous agents use a single monolithic LLM for both generative coding and tactical self-governance. This architecture encounters three operational challenges:
+1. **Compounding Context Growth**: Tool outputs, file reads, and status polling accumulate across turns, generating compounding wire tokens.
+2. **Premature Completion Reporting**: Generative models may conclude tasks before test suites are executed or verified on disk.
+3. **Repetitive Edit Cycles**: During debugging, models can oscillate between identical or near-identical modifications across turns.
 
-AgentAegis enforces an architectural separation of concerns:
+AgentAegis introduces an architectural separation between code generation and execution validation:
 
 | Responsibility | Jev System One (Cognitive Decider) | Frontier LLM (Actuator / Synthesizer) |
 | :--- | :--- | :--- |
 | **Model** | `jev-1.13.0` via `/v1/systemone` | Claude 3.7 Sonnet, Gemini 2.5 Pro, GPT-4o |
-| **Decision Authority** | Final arbiter: approves tools, breaks loops, gates termination | Subordinate: executes approved tool calls and writes diffs |
-| **Code Synthesis** | None: non-generative, probabilistic decision engine | Generates application code, syntax trees, and refactors |
-| **Latency** | 200ms to 600ms per evaluation | 10s to 30s multi-turn latency |
-| **Self-Grading Bias** | Zero: independent mathematical scoring of ground truth | High: prone to premature completion declarations |
-| **Token Cost** | $0.00 for local heuristics; micro-cents per Jev query | $3.00 to $15.00 per million tokens |
+| **Role** | Approves tool calls, flags cycles, verifies test gates | Executes approved tools, synthesizes application code |
+| **Output Type** | Structured evaluations (noul probability, score, choice) | Code diffs, syntax structures, refactors |
+| **Evaluation Latency** | 200ms to 600ms per decision | 10s to 30s per generative turn |
+| **Verification Basis** | Ground-truth disk state and test runner exit codes | Model reasoning and context history |
+| **Execution Cost** | Local heuristics: $0.00; API calls: micro-cents | Standard model API pricing |
 
 ---
 
 ## Core Failure Modes Mitigated
 
-### 1. The Loop Thrashing Token Sink
-- **Problem**: When encountering a failing test, agents often oscillate between two flawed variations or repeat identical edits across 6 to 10 iterations, burning tokens without progress.
-- **Aegis Mitigation**: `cycle-detector.js` maintains an atomic rolling session history and Levenshtein diff variance analyzer. For trivial churn (<15% variance), Aegis trips a circuit breaker on the 3rd repetition. For substantive modifications (>=15% variance), it permits up to 5 repetitions. When tripped, Aegis vetoes the tool call locally in 4ms at zero token cost.
+### 1. Loop Thrashing and Repetitive Edits
+- **Problem**: When encountering a failing test, models may cycle between two variations or repeat identical edits across multiple turns.
+- **Aegis Mitigation**: `cycle-detector.js` maintains an atomic rolling session history and Levenshtein diff variance analyzer. For minor edits (<15% variance), Aegis limits repetition to 3 attempts. For larger modifications (>=15% variance), it allows up to 5 attempts. When tripped, the tool call is blocked with exit code 2.
 
-### 2. Destructive Commands and Credential Exfiltration
-- **Problem**: Compromised prompts, hallucinations, or malicious workspace configs can execute destructive system commands (`rm -rf`, `rd /s /q`, PowerShell encoded payloads) or access sensitive credential files (`.env`, private keys).
-- **Aegis Mitigation**: `jev-client.js` and `sensitive-guard.js` intercept destructive commands and sensitive paths in both file read tools and generic shell command arguments. Regex patterns provide an initial high-speed defense-in-depth heuristic layer; when potentially sensitive or destructive operations are detected, Aegis escalates to Jev System One for Bayesian evaluation under task context. Destructive actions enforce a dual-layer fail-closed policy where timeouts or unhandled errors trigger an automatic block with exit code 2. Custom project deny lists can be supplied via `.aegis.json` in the workspace root.
+### 2. Potentially Destructive Commands and Sensitive Paths
+- **Problem**: Accidental commands (`rm -rf`, `rd /s /q`) or credential reads (`.env`, private keys) can result in data loss or credential leakage.
+- **Aegis Mitigation**: `jev-client.js` and `sensitive-guard.js` inspect tool arguments and shell command strings for destructive patterns and credential targets. Regex patterns serve as an initial heuristic filter; matches are escalated to Jev System One for contextual verification. Destructive actions enforce a fail-closed policy (exit code 2) if an uncaught exception or timeout occurs. Workspace-specific patterns can be configured via `.aegis.json`.
+- **Security Boundary**: AgentAegis operates as application-level lifecycle middleware. It provides defense-in-depth heuristics and semantic vetting, but does not replace kernel-level process sandboxing (such as Docker, eBPF, or seccomp). For hostile untrusted code execution, combine AgentAegis with container isolation.
 
-### 3. Agent Confabulation and Deceptive Claims (The Lie Detector)
-- **Problem**: Agents routinely make ungrounded claims in their final response (e.g. claiming to have created files that do not exist, claiming zero test failures when tests failed, or asserting successful builds despite errors).
-- **Aegis Mitigation**: `acceptance-gate.js` cross-references agent claims against the real environment. It verifies that claimed files exist on disk, checks git status for actual modifications, and runs the automated test runner before allowing completion.
+### 3. Claim-to-Disk Reconciliation
+- **Problem**: Agents may report files as created or modified when the filesystem state does not reflect those changes.
+- **Aegis Mitigation**: `acceptance-gate.js` checks claimed file modifications against disk state and git status before allowing the agent to exit.
 
-### 4. Premature Exit Without Verification
-- **Problem**: Agents exit as soon as code is written, without verifying compilation or running unit tests.
-- **Aegis Mitigation**: When the agent attempts to complete a task, `acceptance-gate.js` intercepts the exit hook, executes the project test command (`npm test`, `pytest`, `cargo test`), parses stdout and stderr semantically across Jest, Vitest, Mocha, TAP, Pytest, Cargo, and Go, and blocks exit if tests fail.
+### 4. Premature Exit Without Test Execution
+- **Problem**: Agents may complete without running the project test suite.
+- **Aegis Mitigation**: On termination (`Stop` hook), `acceptance-gate.js` invokes the project test command (`npm test`, `pytest`, `cargo test`), parses stdout and stderr across supported frameworks, and vetoes exit if tests fail.
 
 ---
 
 ## The Three-Pillar Token Optimization Architecture
 
-AgentAegis eliminates context compounding through three coordinated mechanisms:
+AgentAegis manages context growth through three architectural mechanisms:
 
 ```mermaid
 flowchart TD
-    subgraph Pillar1["Pillar 1: Universal Research Sandboxing"]
-        D["Multi-File Docs / Vaults (Obsidian, PDF, XLSX, Web)"] --> S["Ephemeral Subagent Sandbox"]
-        S -->|"Synthesizes & Discards 50k+ raw tokens"| R["RESEARCH.md (<1,500 tokens)"]
-        R -->|"Only Compact Summary Read Once"| C["Coordinator Context"]
+    subgraph Pillar1["Pillar 1: Research Sandboxing"]
+        D["Documentation / Vaults / Datasets"] --> S["Ephemeral Subagent Sandbox"]
+        S -->|"Synthesizes findings"| R["RESEARCH.md (<1,500 tokens)"]
+        R -->|"Read once"| C["Coordinator Context"]
     end
 
     subgraph Pillar2["Pillar 2: Focal Chunking"]
-        C -->|"Inspects Targeted Line Slices (StartLine/EndLine)"| F["Code Modules"]
+        C -->|"Reads targeted line ranges (StartLine/EndLine)"| F["Code Modules"]
     end
 
-    subgraph Pillar3["Pillar 3: Supervisor Anti-Compounding Throttle"]
-        C -->|"Warn at 3, Veto at 5 on Polling Loops"| T["cycle-detector.js"]
-        T -->|"Forces Reactive Wakeup"| W["Halts Compounding Wire Tokens"]
+    subgraph Pillar3["Pillar 3: Supervisor Throttle"]
+        C -->|"Warn at 3, Veto at 5 on polling loops"| T["cycle-detector.js"]
+        T -->|"Enforces reactive wakeups"| W["Limits Compounding Context"]
     end
 ```
 
-1. **Universal Research Sandboxing**: Multi-file documentation, Obsidian vaults, PDF specs, Excel datasets, or multi-query web searches are never dumped into the coordinator context. An ephemeral subagent ingests the raw files in an isolated sandbox, produces a compact `<1,500` token summary artifact (`RESEARCH.md`), and terminates. The raw tokens are discarded on subagent exit.
-2. **Focal Chunking**: When inspecting code, the agent reads targeted line slices (`StartLine`/`EndLine`) or uses symbol grep rather than loading entire multi-thousand-line files.
-3. **Supervisor Anti-Compounding Throttle**: Polling tools (`manage_subagents`, `manage_task`, `list_subagents`) are capped: a non-blocking warning is issued at 3 consecutive polls, and a hard circuit breaker veto is enforced at 5 polls. This slashes supervisor turns from 70+ down to under 15, directly eliminating over 4,000,000 compounding wire tokens.
+1. **Research Sandboxing**: Multi-file documentation, datasets, or multi-query searches are delegated to an ephemeral subagent. The subagent writes a compact summary (`RESEARCH.md`, under 1,500 tokens) and exits, preventing bulk raw text from entering the main coordinator context.
+2. **Focal Chunking**: Code inspections use targeted line ranges (`StartLine`/`EndLine`) or symbols rather than whole-file reads.
+3. **Supervisor Throttle**: Repetitive status polling (`manage_subagents`, `manage_task`) is monitored: a warning is issued after 3 consecutive polls, and a veto is enforced after 5 polls, encouraging reliance on reactive event notifications.
 
 ---
 
-## Real-World Empirical Benchmark
+## Empirical Multi-Turn Case Study
 
-The multi-turn benchmark measured token physics across three implementation strategies on the same complex multi-turn task:
-- **Implementation A (Without Harness)**: Unconstrained autonomous agent without cognitive interception.
-- **Implementation B (Aegis V1 - Unconstrained Polling)**: Interceptor active, but supervisor allowed to poll child tasks in an active loop.
-- **Implementation C (AgentAegis V2)**: Full Aegis architecture with Research Sandboxing and Supervisor Throttle.
+To observe context growth and turn counts, a standardized multi-file refactoring task was run across three configurations:
+- **Baseline**: Autonomous agent execution without lifecycle interception.
+- **Unconstrained Polling (V1)**: Interceptor active, supervisor polling unconstrained.
+- **Sandboxed (V2)**: Research sandboxing and supervisor throttle enabled.
 
-### Empirical Measurements Table
+### Recorded Run Telemetry
 
-| Metric | Without Harness | Aegis V1 (Unconstrained) | AgentAegis V2 (Sandboxed) |
+| Measurement | Baseline | Unconstrained Polling (V1) | Sandboxed (V2) |
 | :--- | :--- | :--- | :--- |
-| **Total Wire Tokens** | 2,320,000 tokens | 6,600,000 tokens | **~220,000 tokens (90.5% - 96.7% Savings)** |
-| **Coordinator Turns** | 22 turns | 73 turns (polling loop) | **4 turns (reactive system wakeups)** |
-| **Coordinator Wire Tokens** | ~1,400,000 tokens | 5,390,000 tokens | **~180,000 tokens (96.6% reduction)** |
-| **Subagent Wire Tokens** | ~920,000 tokens | 1,230,000 tokens | **18,493 tokens (98.5% reduction)** |
-| **Deterministic Verification** | 0 tests executed | 5 automated tests | **11 automated test gates (100% pass)** |
-| **Zero Emoji Compliance** | Violated (8 emojis) | 100% Zero Emojis | **100% Zero Emojis (Unicode regex verified)** |
-| **Execution Quality Score** | 0.97 / 3.00 (Flawed) | 2.86 / 3.00 (Strong) | **2.88 / 3.00 (High-Precision Production)** |
+| **Total Wire Tokens** | 2,320,000 tokens | 6,600,000 tokens | 220,000 tokens |
+| **Supervisor Turns** | 22 turns | 73 turns | 4 turns |
+| **Coordinator Tokens** | 1,400,000 tokens | 5,390,000 tokens | 180,000 tokens |
+| **Subagent Tokens** | 920,000 tokens | 1,230,000 tokens | 18,493 tokens |
+| **Automated Tests Executed** | 0 tests | 5 tests | 11 tests |
+| **Test Verification Status** | Unverified | Partial | Verified pass (exit code 0) |
+
+*Note: Telemetry recorded during standardized evaluation runs. Actual token usage depends on task requirements and model behavior.*
 
 ---
 
@@ -119,7 +121,7 @@ The AgentAegis codebase is modular, zero-dependency, and written in native ES mo
 | Module | File | Responsibility |
 | :--- | :--- | :--- |
 | **Interceptor CLI** | `harness/interceptor.js` | Multi-engine CLI hook router (`pre-tool`, `verify-gate`). Parses raw JSON and shell key-values. Exits `0` (benign) or `2` (veto). Enforces fail-closed on uncaught errors during destructive actions. |
-| **Acceptance Gate** | `harness/acceptance-gate.js` | Deterministic verification gate. Runs test runner, sanitizes custom commands against shell injection, executes Lie Detector audits, and verifies completion. |
+| **Acceptance Gate** | `harness/acceptance-gate.js` | Deterministic verification gate. Runs test runner via `safeSpawnAsync`, sanitizes custom commands against shell injection, executes claim-to-disk reconciliation audits, and verifies completion. |
 | **Cycle Detector** | `harness/cycle-detector.js` | Dynamic multi-pattern loop detection (consecutive, oscillating, triangular) with diff variance and supervisor polling throttles. |
 | **Sensitive Guard** | `harness/sensitive-guard.js` | Fastpath and credential exfiltration guard for file paths and shell execution arguments. Extensible via project `.aegis.json`. |
 | **Diff Variance** | `harness/diff-variance.js` | Levenshtein edit distance and trivial churn classifier. Sets repetition thresholds dynamically based on code change magnitude. |
@@ -135,13 +137,13 @@ The AgentAegis codebase is modular, zero-dependency, and written in native ES mo
 
 ## Large Codebase & 500+ MB Dataset Scalability
 
-Empirically verified by Jev System One (**P = 0.98 Scalable & Protected**):
+Scalability and context protection architecture:
 
 1. **10MB Buffer & 50-Line Line Limits**: In `harness/state-collector.js`, `execSync` is bounded by `maxBuffer: 10 * 1024 * 1024` and 50 lines. Lockfiles (`package-lock.json`, `pnpm-lock.yaml`, `poetry.lock`) are excluded automatically, preventing `ENOBUFS` crashes on monorepos.
 2. **Adaptive Context Envelopes**: Diffs are bounded between 1,200 and 2,500 characters, and tool arguments over 600 characters are hashed with SHA-256 (`sha256:7f8a3c21`).
 3. **Bounded Manifest Traversal**: `harness/manifest-sniffer.js` limits directory search depth to `maxDepth = 3` and tracks visited directories via `fs.realpathSync` to eliminate cyclic symlink loops.
 4. **Disk-Backed Shadow Buffers**: `harness/cycle-detector.js` caches virtual file representations in `.aegis-harness/<sessionId>/shadow/` on local disk with automatic 48-hour session pruning, keeping RAM consumption under 20MB.
-5. **Script-Assisted Streaming for 500+ MB Files (P = 0.99)**: Jev confirmed that direct LLM ingestion of 500MB files is physically impossible (~125M tokens). Aegis delegates large datasets (XLSX, PDF, CSV) to ephemeral subagents that query files on disk using local CPU scripts (`duckdb`, `pandas chunksize`, `ripgrep`), returning only compact summary metrics into context.
+5. **Script-Assisted Streaming for 500+ MB Files**: Direct LLM ingestion of 500MB files is infeasible (~125M tokens). Aegis delegates large datasets (XLSX, PDF, CSV) to ephemeral subagents that query files on disk using local CPU scripts (`duckdb`, `pandas chunksize`, `ripgrep`), returning only compact summary metrics into context.
 
 ---
 

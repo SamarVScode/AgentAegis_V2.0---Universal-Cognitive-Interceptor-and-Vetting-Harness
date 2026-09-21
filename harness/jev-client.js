@@ -147,7 +147,7 @@ export function handleBipartiteFailSafe(isDestructive, error) {
       timedOut: isTimeout,
       fallback: true,
       probability: 0.0,
-      reason: `[JEV SECURITY BLOCK]: API call failed (${error?.message || 'timeout'}) during a potentially destructive operation. Hard fail-closed enforced.`
+      reason: `[JEV SECURITY BLOCK]: API call failed (${error?.message || 'timeout'}) during a potentially destructive operation. Hard fail-closed enforced. Blocked for safety.`
     };
   }
 
@@ -157,7 +157,7 @@ export function handleBipartiteFailSafe(isDestructive, error) {
     timedOut: isTimeout,
     fallback: true,
     probability: 0.5,
-    reason: `[JEV WARN]: API call failed (${error?.message || 'timeout'}). Failing open for benign operation. Developer review advised.`
+    reason: `[JEV WARN]: API call failed (${error?.message || 'timeout'}); failing open for benign action. Developer review advised.`
   };
 }
 

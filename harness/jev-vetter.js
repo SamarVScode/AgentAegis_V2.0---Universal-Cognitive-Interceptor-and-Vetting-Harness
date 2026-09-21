@@ -31,10 +31,12 @@ export async function queryJevViaMcp(state, timeoutMs = 5000) {
 
     const isHazard = !res.approved;
     return {
-      success: true,
+      success: !res.timedOut,
       approved: res.approved,
       probability: res.probability,
       isHazard,
+      reason: res.reason || (isHazard ? 'Destructive hazard detected.' : 'Action approved.'),
+      timedOut: Boolean(res.timedOut),
       data: {
         content: [{
           type: 'text',

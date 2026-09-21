@@ -19,6 +19,7 @@ import { collectState } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
 import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
+import { lintCoreLaws, formatCoreLawsReport } from './core-laws-linter.js';
 import { verifyAcceptanceGate } from './acceptance-gate.js';
 
 const rawArgs = process.argv.slice(2);
@@ -161,11 +162,13 @@ export async function runInterceptor() {
       sessionFromFile = fs.readFileSync(sessionFilePath, 'utf8').trim() || null;
     }
   } catch {}
-  const sessionId = process.env.CONVERSATION_ID ||
+  const ppidSuffix = process.ppid ? `-p${process.ppid}` : '';
+  const sessionId = process.env.AEGIS_SESSION_ID ||
+                    process.env.CONVERSATION_ID ||
                     process.env.CLAUDE_CONVERSATION_ID ||
                     process.env.CURSOR_SESSION_ID ||
                     sessionFromFile ||
-                    ('cwd-' + cwdHash);
+                    (`cwd-${cwdHash}${ppidSuffix}`);
 
   // -------------------------------------------------------------------------
   // HOOK 1: PRE-TOOL USE
@@ -253,7 +256,7 @@ export async function runInterceptor() {
     if (cmdStr) {
       const sensitiveInCmd = inspectCommandForSensitivePaths(cmdStr);
       if (sensitiveInCmd.isSensitive) {
-        const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION);
+        const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION, true);
         if (!secResult.approved) {
           console.error(secResult.reason);
           process.exit(2);
@@ -282,6 +285,15 @@ export async function runInterceptor() {
     }
     if (cycle.warning && cycle.critique) {
       console.error(cycle.critique);
+    }
+
+    // Step 3: Universal Code Invariants Linter
+    if (wholeFileContent && (toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit'))) {
+      const lintResult = lintCoreLaws(wholeFileContent, targetFile);
+      if (!lintResult.clean) {
+        console.error(formatCoreLawsReport(lintResult.violations));
+        process.exit(2); // Hard block universal code invariant violation
+      }
     }
 
     // Step 4: Destructive Side-Effect Vetting via Jev System One (Isolated fail-closed guard)
@@ -360,10 +372,10 @@ if (process.argv[1] && process.argv[1].endsWith('interceptor.js')) {
   runInterceptor().catch(err => {
     console.error('Interceptor unexpected error:', err.message);
     console.error(err.stack || '(no stack trace available)');
-    if (globalThis.__currentOperationDestructive || rawArgs.some(a => isDestructiveAction('run_command', { CommandLine: a }))) {
-      console.error('[JEV SAFETY VETO]: Interceptor uncaught error during potentially destructive operation. Hard fail-closed enforced (exit 2).');
+    if (mode === 'pre-tool' || mode === 'preToolUse' || mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || globalThis.__currentOperationDestructive || rawArgs.some(a => isDestructiveAction('run_command', { CommandLine: a }))) {
+      console.error('[JEV SAFETY VETO]: Interceptor unhandled error during critical lifecycle gate. Hard fail-closed enforced (exit 2).');
       process.exit(2);
     }
-    process.exit(0); // Fail open gracefully on internal unexpected error for benign operations
+    process.exit(0); // Fail open gracefully on internal unexpected error for benign post-tool telemetry
   });
 }

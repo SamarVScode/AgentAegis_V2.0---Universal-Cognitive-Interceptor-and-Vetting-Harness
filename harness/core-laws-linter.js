@@ -13,18 +13,36 @@ export const PRAGMA_REGEX = /\/\/\s*aegis-ignore:\s*(core-laws|header-map-law|in
 export const INVARIANT_RULES = [
   {
     id: 'UNSAFE_DYNAMIC_EVAL',
+    law: 'UNSAFE_DYNAMIC_EVAL',
     description: 'Dynamic code execution (eval or new Function) introduces arbitrary code execution vulnerabilities.',
     pattern: /\b(eval\s*\(|new\s+Function\s*\(|vm\.runInThisContext\s*\()/i
   },
   {
     id: 'HARDCODED_PRIVATE_KEY',
+    law: 'HARDCODED_PRIVATE_KEY',
     description: 'Hardcoded plaintext private key detected in source code.',
     pattern: /-----BEGIN\s+([A-Z0-9_-]+\s+)?PRIVATE\s+KEY-----/i
   },
   {
     id: 'PROTOTYPE_POLLUTION',
+    law: 'PROTOTYPE_POLLUTION',
     description: 'Direct __proto__ assignment risks object prototype pollution.',
     pattern: /\b__proto__\s*=/i
+  }
+];
+
+export const GAS_RULES = [
+  {
+    id: 'HEADER_MAP_LAW',
+    law: 'HEADER_MAP_LAW',
+    description: 'Hardcoded numeric array indexing prohibited in GAS spreadsheets. Use header map.',
+    pattern: /\b(row|data|record)\[\d+\]/
+  },
+  {
+    id: 'SAFE_SERIALIZATION_LAW',
+    law: 'SAFE_SERIALIZATION_LAW',
+    description: 'Raw Date or Blob objects across google.script.run RPC are not serializable. Pass numeric timestamp or string.',
+    pattern: /google\.script\.run\.[a-zA-Z0-9_]+\([^)]*\b(new\s+Blob\b|new\s+Date\s*\(\s*\)(?!\s*\.(getTime|toISOString|valueOf|toUTCString|toDateString|toString)\b))/
   }
 ];
 
@@ -43,15 +61,19 @@ export function lintCoreLaws(codeString = '', filePath = '') {
 
   const lines = code.split(/\r?\n/);
   const violations = [];
+  const normalizedPath = String(filePath || '').replace(/\\/g, '/');
+  const isGas = normalizedPath.endsWith('.gs') || normalizedPath.includes('gas/') || (normalizedPath.endsWith('.html') && code.includes('google.script.run'));
+  const activeRules = isGas ? [...INVARIANT_RULES, ...GAS_RULES] : INVARIANT_RULES;
 
   lines.forEach((line, index) => {
     const trimmed = line.trim();
     if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#')) return;
 
-    for (const rule of INVARIANT_RULES) {
+    for (const rule of activeRules) {
       if (rule.pattern.test(line)) {
         violations.push({
           ruleId: rule.id,
+          law: rule.law,
           line: index + 1,
           filePath: filePath || 'unknown',
           description: rule.description,
