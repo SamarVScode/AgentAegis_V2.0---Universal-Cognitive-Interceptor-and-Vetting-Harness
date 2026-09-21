@@ -151,21 +151,21 @@
           <h3 class="stage-name" id="stage-name">Stage 1: PreTool Hook Interception</h3>
           <p class="stage-description" id="stage-description">
             Intercepts every tool call before disk mutation or shell execution occurs.
-            Evaluates arguments against destructive action filters, directory traversal rules, and secret token guards.
-            Instantly issues Exit Code 2 with a safety veto on destructive shell operations like raw deletion or storage resets.
+            Evaluates arguments against destructive action filters (isDestructiveAction) and secret credential guards (sensitive-guard.js).
+            Issues Exit Code 2 with a safety veto on destructive operations.
           </p>
           <div class="stage-features" id="stage-features">
             <div class="feature-item">
               <span class="feature-key">Execution Speed</span>
-              <span class="feature-val">Under 1.2ms (Zero network overhead)</span>
+              <span class="feature-val">Under 1.2ms (Zero network overhead fastpath)</span>
             </div>
             <div class="feature-item">
-              <span class="feature-key">Core Laws Linter</span>
-              <span class="feature-val">Zero-token AST scan for banned slop patterns</span>
+              <span class="feature-key">Invariant Linter</span>
+              <span class="feature-val">Static pattern scan for eval, private keys, and prototype pollution</span>
             </div>
             <div class="feature-item">
               <span class="feature-key">Destructive Veto</span>
-              <span class="feature-val">Instant SIGTERM / Exit Code 2 on destructive commands</span>
+              <span class="feature-val">Instant fail-closed veto (Exit Code 2) on destructive commands</span>
             </div>
           </div>
         </div>
@@ -184,11 +184,11 @@ if (isDestructive) {
   process.exit(2);
 }
 
-// Zero-token 4 Core Laws validation
-const violations = lintCoreLaws(toolArgs.CodeContent || "");
-if (violations.length > 0) {
-  process.stderr.write(`[CORE LAWS VETO]: ${violations.join(", ")}\n`);
-  process.exit(1);
+// Static code invariants linter
+const linterRes = lintCoreLaws(toolArgs.CodeContent || toolArgs.code || "");
+if (!linterRes.clean) {
+  process.stderr.write(`[CORE LAWS VETO]: ${linterRes.violations.join(", ")}\n`);
+  process.exit(2);
 }</code></pre>
         </div>
       </div>

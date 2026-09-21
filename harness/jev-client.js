@@ -170,7 +170,7 @@ export async function callJevSystemOne({
   apiKey,
   model = DEFAULT_MODEL,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  maxRetries = 2
+  maxRetries = 6
 }) {
   const resolvedApiKey = apiKey || process.env.TYPESAFE_API_KEY || process.env.OPENROUTER_API_KEY;
   if (!resolvedApiKey) {
@@ -221,9 +221,9 @@ export async function callJevSystemOne({
       }
 
       if (!response.ok) {
-        const isTransient = response.status === 429 || response.status === 503 || response.status === 502;
+        const isTransient = response.status === 429 || response.status === 503 || response.status === 502 || response.status === 529;
         if (isTransient && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 500;
+          const delay = Math.pow(2, attempt) * 1500;
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
@@ -241,7 +241,7 @@ export async function callJevSystemOne({
       }
       if (attempt === maxRetries) throw err;
       lastError = err;
-      const delay = Math.pow(2, attempt) * 500;
+      const delay = Math.pow(2, attempt) * 1500;
       await new Promise(r => setTimeout(r, delay));
     }
   }

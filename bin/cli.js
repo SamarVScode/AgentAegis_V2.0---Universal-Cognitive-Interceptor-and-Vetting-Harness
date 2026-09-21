@@ -11,9 +11,12 @@
 import path from 'path';
 import { runInstall } from '../harness/install.js';
 import { runInterceptor } from '../harness/interceptor.js';
+import { verifyAcceptanceGate } from '../harness/acceptance-gate.js';
+import { loadSession } from '../harness/cycle-detector.js';
+import { isDestructiveAction } from '../harness/jev-client.js';
 
 const rawArgs = process.argv.slice(2);
-const hookCommands = ['pre-tool', 'preToolUse', 'post-tool', 'postToolUse', 'verify-gate', 'preExit', 'pre-exit'];
+const hookCommands = ['pre-tool', 'preToolUse', 'post-tool', 'postToolUse', 'preExit', 'pre-exit'];
 const isHookInvocation = rawArgs.some(arg => hookCommands.includes(arg) || arg === '--engine');
 
 if (isHookInvocation) {
@@ -22,16 +25,52 @@ if (isHookInvocation) {
     console.error(err.stack || '(no stack trace available)');
     process.exit(0);
   });
+} else if (rawArgs.includes('verify') || rawArgs.includes('gate') || rawArgs.includes('verify-gate')) {
+  const targetDirIndex = rawArgs.indexOf('--target-dir');
+  const targetDir = targetDirIndex !== -1 && rawArgs[targetDirIndex + 1] ? rawArgs[targetDirIndex + 1] : process.cwd();
+  console.log('[AEGIS VERIFY]: Executing 3-Stage Acceptance Gate on target:', targetDir);
+  verifyAcceptanceGate(null, targetDir).then(res => {
+    if (res.passed) {
+      console.log('[AEGIS VERIFY PASS]: Acceptance gate cleared successfully. Exit code 0.');
+      process.exit(0);
+    } else {
+      console.error(`[AEGIS VERIFY VETO]: Gate rejected at stage '${res.stage}': ${res.reason}`);
+      process.exit(1);
+    }
+  }).catch(err => {
+    console.error('[AEGIS VERIFY ERROR]:', err.message);
+    process.exit(1);
+  });
+} else if (rawArgs.includes('check-cycle')) {
+  const sessionId = process.env.AEGIS_SESSION_ID || 'default';
+  const session = loadSession(sessionId);
+  console.log(`[AEGIS CHECK-CYCLE]: Active session '${sessionId}' history entries: ${session.rollingHistory ? session.rollingHistory.length : 0}`);
+  console.log(`[AEGIS CHECK-CYCLE]: Status: ${session.tripped ? 'TRIPPED_CYCLE_BREAKER' : 'NOMINAL'}`);
+  process.exit(0);
+} else if (rawArgs.includes('test:veto')) {
+  console.log('[AEGIS TEST:VETO]: Simulating destructive command invocation: rm -rf / --no-preserve-root');
+  const destructive = isDestructiveAction('run_command', { CommandLine: 'rm -rf / --no-preserve-root' });
+  if (destructive) {
+    console.error('[JEV SAFETY VETO]: Destructive command pattern blocked by fastpath filter.');
+    console.error('[VETO ENFORCED]: Process terminated with Exit Code 2. Disk untouched.');
+    process.exit(2);
+  } else {
+    console.log('[UNEXPECTED]: Pattern was not detected.');
+    process.exit(1);
+  }
 } else {
   if (rawArgs.includes('--help') || rawArgs.includes('-h') || rawArgs.includes('help')) {
     console.log(`AgentAegis - Universal Cognitive Interceptor & Vetting Harness for Autonomous Coding Agents
 
 Usage:
-  aegis [options]
-  agent-aegis [options]
+  aegis [command] [options]
+  agent-aegis [command] [options]
 
 Commands:
   install, init         Install hook configurations into current or target workspace
+  verify, gate          Run the 3-Stage Acceptance Gate verification pipeline
+  check-cycle           Inspect active session history and loop circuit breaker status
+  test:veto             Simulate a destructive command veto (exits with code 2)
 
 Options:
   --all                 Install hooks for all detected agent ecosystems (Claude, Cursor, Antigravity)

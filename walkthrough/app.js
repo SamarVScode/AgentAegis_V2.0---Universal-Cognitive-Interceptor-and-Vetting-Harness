@@ -21,11 +21,11 @@ const STAGES = {
     tag: 'HOOK: preToolUse / pre-tool',
     status: '[ACTIVE: BLOCKING MODE]',
     name: 'Stage 1: PreTool Hook Interception',
-    desc: 'Intercepts every tool call before disk mutation or shell execution occurs. Evaluates arguments against destructive action filters, directory traversal rules, and secret token guards. Instantly issues Exit Code 2 with a safety veto on destructive shell operations like raw deletion or storage resets.',
+    desc: 'Intercepts every tool call before disk mutation or shell execution occurs. Evaluates arguments against destructive action filters (isDestructiveAction) and secret credential guards (sensitive-guard.js). Issues Exit Code 2 with a safety veto on destructive operations.',
     features: [
-      { key: 'Execution Speed', val: 'Under 1.2ms (Zero network overhead)' },
-      { key: 'Core Laws Linter', val: 'Zero-token AST scan for banned slop patterns' },
-      { key: 'Destructive Veto', val: 'Instant SIGTERM / Exit Code 2 on destructive commands' }
+      { key: 'Execution Speed', val: 'Under 1.2ms (Zero network overhead fastpath)' },
+      { key: 'Invariant Linter', val: 'Static pattern scan for eval, private keys, and prototype pollution' },
+      { key: 'Destructive Veto', val: 'Instant fail-closed veto (Exit Code 2) on destructive commands' }
     ],
     previewTitle: 'harness/interceptor.js [preToolUse]',
     code: `// Intercept incoming tool invocation
@@ -35,86 +35,78 @@ if (isDestructive) {
   process.exit(2);
 }
 
-// Zero-token 4 Core Laws validation
-const violations = lintCoreLaws(toolArgs.CodeContent || "");
-if (violations.length > 0) {
-  process.stderr.write(\`[CORE LAWS VETO]: \${violations.join(", ")}\\n\`);
-  process.exit(1);
+// Static code invariants linter
+const linterRes = lintCoreLaws(toolArgs.CodeContent || toolArgs.code || "");
+if (!linterRes.clean) {
+  process.stderr.write(\`[CORE LAWS VETO]: \${linterRes.violations.join(", ")}\\n\`);
+  process.exit(2);
 }`
   },
   2: {
     tag: 'MODULE: cycle-detector.js',
-    status: '[ACTIVE: THRESHOLD=3]',
-    name: 'Stage 2: Cycle Detector & Diff Variance Breaker',
-    desc: 'Maintains a rolling SHA-256 fingerprint window of tool actions and target arguments. Reconstructs a virtual shadow buffer for partial edits to observe macro-file convergence. If an agent loops on the same error or thrashing pattern 3 times, the circuit trips immediately to stop token burn.',
+    status: '[ACTIVE: THRESHOLD=3-5]',
+    name: 'Stage 2: Cycle Detector & Diff Variance',
+    desc: 'Maintains an atomic rolling session history and Levenshtein diff variance analyzer. Reconstructs a disk-backed virtual shadow buffer for partial edits. Trips the circuit breaker on turn 3 for low-variance edits (<15%) and turn 5 for substantive edits (>=15%).',
     features: [
-      { key: 'Thrashing Threshold', val: 'Hard trip at 3 repeated cycles (vs 5 in unhardened)' },
-      { key: 'Shadow Buffer', val: 'In-memory virtual assembly of partial edits' },
-      { key: 'Diff Variance Metric', val: 'Levenshtein divergence ratio across sequential turns' }
+      { key: 'Dynamic Threshold', val: 'Hard trip at 3 repeats (<15% variance) or 5 repeats (>=15% variance)' },
+      { key: 'Shadow Buffer', val: 'Disk-backed virtual assembly in .aegis-harness/<sessionId>/shadow/' },
+      { key: 'Supervisor Throttle', val: 'Warns at 3 polls, hard veto at 5 polls to enforce reactive wakeups' }
     ],
-    previewTitle: 'harness/cycle-detector.js [circuitBreaker]',
-    code: `// Evaluate rolling tool sequence hash
-const actionHash = hashToolInvocation(toolName, toolArgs);
-const repetitionCount = countSequentialRepetitions(sessionHistory, actionHash);
-
-if (repetitionCount >= 3) {
+    previewTitle: 'harness/cycle-detector.js [checkCycle]',
+    code: `// Evaluate rolling tool sequence and diff variance
+const cycle = checkCycle(sessionId, toolName, toolArgs);
+if (cycle.tripped) {
   process.stderr.write("[THRASHER DETECTED]: Repetitive sequence detected.\\n");
-  process.stderr.write("[CIRCUIT BREAKER]: Halting execution loop to prevent quadratic burn.\\n");
-  saveSessionState(sessionId, { status: "TRIPPED_CYCLE_BREAKER" });
-  process.exit(1);
+  process.stderr.write(\`[CIRCUIT BREAKER]: \${cycle.reason}\\n\`);
+  saveSession(sessionId, { tripped: true });
+  process.exit(2);
 }`
   },
   3: {
     tag: 'MODULE: state-collector.js',
     status: '[ACTIVE: ADAPTIVE ENVELOPE]',
     name: 'Stage 3: Ground Truth State Collector',
-    desc: 'Extracts real git worktree status, unit test exit codes, and sanitized source changes into a compact envelope. Strips verbose binary data and non-essential logs, transmitting only verifiable diffs to the supervisor. Completely eliminates hallucinated claims.',
+    desc: 'Gathers git worktree status, diff stats, and stderr tails with a 10MB maxBuffer ceiling. Automatically excludes lockfiles to prevent buffer saturation. Compresses tool arguments exceeding 600 characters into 8-character SHA-256 fingerprints.',
     features: [
-      { key: 'Ground Truth Source', val: 'Direct process inspect + git status + AST metrics' },
-      { key: 'Payload Optimization', val: 'Selective diff truncation preserving token bounds' },
-      { key: 'Hallucination Defense', val: 'Subagent claims checked against filesystem reality' }
+      { key: 'Ground Truth Source', val: 'Direct git status, diff stats, and execution exit codes' },
+      { key: 'Monorepo Protection', val: '10MB maxBuffer limit and automatic lockfile exclusion' },
+      { key: 'Context Bounding', val: 'Diffs bounded between 1,200 - 2,500 chars; SHA-256 arg hashing' }
     ],
     previewTitle: 'harness/state-collector.js [collectState]',
-    code: `// Collect ground truth state without token compounding
-export async function collectState(workspaceRoot) {
-  const gitDiff = await execAsync("git diff --stat", { cwd: workspaceRoot });
-  const testResults = parseTestRunners(workspaceRoot);
-  const coreLints = scanForBannedTokens(workspaceRoot);
-
-  return {
-    verified_passes: testResults.passed,
-    failing_tests: testResults.failed,
-    files_modified: gitDiff.summary,
-    slop_violations: coreLints.violations
-  };
+    code: `// Collect ground-truth state without context compounding
+export function collectState(workspaceRoot) {
+  const gitStatus = execSync("git status --porcelain", { cwd: workspaceRoot, maxBuffer: 10 * 1024 * 1024 });
+  const gitDiff = execSync("git diff --stat", { cwd: workspaceRoot, maxBuffer: 10 * 1024 * 1024 });
+  
+  return buildAdaptiveEnvelope({
+    git_status: gitStatus.toString().slice(0, 1500),
+    git_diff_stat: gitDiff.toString().slice(0, 1500)
+  });
 }`
   },
   4: {
     tag: 'GATE: acceptance-gate.js',
-    status: '[ACTIVE: FAIL-CLOSED]',
+    status: '[ACTIVE: 3-STAGE PIPELINE]',
     name: 'Stage 4: Jev Acceptance Gate',
-    desc: 'The final deterministic hurdle. Before any agent can declare a mission complete, the acceptance gate executes configured test runners and verifies full adherence to prestige rubrics. If even one test fails or an emoji is detected, completion is refused with exit code 1.',
+    desc: 'Dual-stage verification pipeline with Stage 1.5 Ground-Truth Claim Reconciliation: Stage 1 executes test runners via safeSpawnAsync, Stage 1.5 audits agent claims against test execution and filesystem existence across extension variants (.ts/.tsx/.jsx/.mjs/.cjs/.js), and Stage 2 queries Jev System One.',
     features: [
-      { key: 'Runner Execution', val: 'Automated runner parser for Node, Jest, Cargo, Vitest' },
-      { key: 'Jev Adjudication', val: 'System 1 Bayesian rubric evaluation (P >= 0.95)' },
-      { key: 'Fail-Closed Security', val: 'No ambiguous passes; missing credentials trigger abort' }
+      { key: 'Stage 1 Execution', val: 'safeSpawnAsync with ComSpec on Windows (45s timeout, 10MB buffer)' },
+      { key: 'Stage 1.5 Lie Detector', val: 'Audits test claims, file existence variants, and build success' },
+      { key: 'Stage 2 Semantic Gate', val: 'Jev System One Bayesian evaluation (/v1/systemone, P >= 0.85)' }
     ],
-    previewTitle: 'harness/acceptance-gate.js [verifyGate]',
-    code: `// Enforce final gate verification before exit
-export async function verifyAcceptanceGate(opts = {}) {
-  const suiteResult = await executeAutomatedSuites();
-  if (!suiteResult.success) {
-    throw new Error(\`Acceptance gate blocked: \${suiteResult.failures} tests failing.\`);
-  }
+    previewTitle: 'harness/acceptance-gate.js [verifyAcceptanceGate]',
+    code: `// 3-Stage verification pipeline before agent exit release
+export async function verifyAcceptanceGate(customCmd, targetDir, agentStatement, sessionId) {
+  // Stage 1: Runner execution
+  const res = await safeSpawnAsync(testCommand, { timeout: 45000, maxBuffer: 10 * 1024 * 1024 });
+  const parsedRun = parseTestRunnerOutput(ecosystem, res.stdout, res.stderr, res.code);
 
-  const adjudication = await callJevSystemOne({
-    state: suiteResult.summary,
-    questions: { pass_rubric: { type: "boolean" } }
-  });
+  // Stage 1.5: Ground-truth claim reconciliation
+  const reconciliation = reconcileClaimsWithGroundTruth(claims, session, targetDir, parsedRun);
+  if (!reconciliation.reconciled) return { passed: false, stage: 'stage_1_5', reason: reconciliation.reason };
 
-  if (!adjudication.answers.pass_rubric.value) {
-    throw new Error("Acceptance gate blocked by Jev System 1 rubric check.");
-  }
+  // Stage 2: Jev System One semantic gate
+  return await callJevSystemOne({ state: telemetry, questions: { gate_approval: { type: 'noul' } } });
 }`
   }
 };
