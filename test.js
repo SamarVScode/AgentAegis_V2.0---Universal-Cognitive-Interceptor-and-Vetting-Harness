@@ -13,7 +13,7 @@ dotenv.config({ path: path.join(__dirname, '.env') });
 async function runTests() {
   console.log('====================================================');
   console.log('Starting TypeSafe Jev MCP Server Test Suite');
-  console.log('OpenRouter API Key present:', !!process.env.OPENROUTER_API_KEY);
+  console.log('TypeSafe API Key present:', !!(process.env.TYPESAFE_API_KEY || process.env.OPENROUTER_API_KEY));
   console.log('====================================================\n');
 
   let passed = 0;
