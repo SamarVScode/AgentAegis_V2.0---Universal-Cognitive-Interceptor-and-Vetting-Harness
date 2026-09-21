@@ -1,0 +1,46 @@
+{
+  "name": "@samarvscode/aegis",
+  "version": "2.0.0",
+  "description": "AgentAegis — Universal Cognitive Interceptor & Vetting Harness for Autonomous Coding Agents",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "aegis": "./bin/cli.js",
+    "agent-aegis": "./bin/cli.js"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "harness",
+    "bin",
+    "index.js",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node test/test-dynamic-harness.js",
+    "test:aegis": "node test/test-dynamic-harness.js",
+    "test:v2": "node test/test-aegis-v2-mitigations.js",
+    "test:enhancements": "node test/test-enhancements.js",
+    "test:all": "node test/test-dynamic-harness.js && node test/test-aegis-v2-mitigations.js && node test/test-enhancements.js && node test.js",
+    "test:hooks": "node test/test-live-hooks.mjs",
+    "install:hooks": "node harness/install.js"
+  },
+  "keywords": [
+    "typesafe",
+    "aegis",
+    "jev",
+    "cognitive-interceptor",
+    "agent-harness",
+    "vetting-middleware",
+    "claude-code",
+    "cursor",
+    "antigravity"
+  ],
+  "author": "TypeSafe AI",
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

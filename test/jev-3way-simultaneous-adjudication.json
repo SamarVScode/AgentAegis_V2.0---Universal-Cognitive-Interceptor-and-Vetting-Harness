@@ -1,0 +1,70 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "score_without_harness": {
+      "type": "score",
+      "score": 0.97,
+      "confidence": 0.9,
+      "legend": {
+        "0": "0: Unusable or damaging to prestige",
+        "1": "1: Flawed or risky: fictitious title, 0 tests, 8 emojis, unverified claims",
+        "2": "2: Solid technical breadth",
+        "3": "3: Exceptional executive caliber"
+      },
+      "probabilities": {
+        "0": 0.07,
+        "1": 0.89,
+        "2": 0.03,
+        "3": 0.01
+      }
+    },
+    "score_aegis_v1": {
+      "type": "score",
+      "score": 2.86,
+      "confidence": 0.86,
+      "legend": {
+        "0": "0: Unusable",
+        "1": "1: Mediocre",
+        "2": "2: Solid Senior",
+        "3": "3: Exceptional Staff/Executive caliber: authentic metrics, zero emojis, print stylesheet, 5 tests"
+      },
+      "probabilities": {
+        "0": 0,
+        "1": 0.02,
+        "2": 0.08,
+        "3": 0.9
+      }
+    },
+    "score_aegis_v2": {
+      "type": "score",
+      "score": 2.88,
+      "confidence": 0.88,
+      "legend": {
+        "0": "0: Unusable",
+        "1": "1: Mediocre",
+        "2": "2: Solid Senior",
+        "3": "3: Exceptional Staff/Lead caliber: authentic supply chain systems (Rust calamine, 15-35MB RSS, WebRTC host shell, ML Kit OCR, sub-second barcode wedge), zero emojis, 11 tests"
+      },
+      "probabilities": {
+        "0": 0.01,
+        "1": 0.01,
+        "2": 0.08,
+        "3": 0.9
+      }
+    },
+    "overall_definitive_winner": {
+      "type": "choice",
+      "choice": "aegis_v2",
+      "confidence": 0.99,
+      "probabilities": {
+        "without_harness": 0,
+        "aegis_v1": 0,
+        "aegis_v2": 1
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 17746,
+    "output_tokens": 112
+  }
+}

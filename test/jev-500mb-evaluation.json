@@ -1,0 +1,36 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "direct_llm_ingestion_of_500mb": {
+      "type": "choice",
+      "choice": "physically_impossible",
+      "confidence": 1,
+      "probabilities": {
+        "physically_impossible": 1,
+        "readily_supported": 0
+      }
+    },
+    "how_aegis_processes_500mb_files": {
+      "type": "choice",
+      "choice": "script_assisted_streaming_sandbox",
+      "confidence": 0.99,
+      "probabilities": {
+        "script_assisted_streaming_sandbox": 0.99,
+        "raw_dump_to_chat": 0.01
+      }
+    },
+    "aegis_interceptor_containment": {
+      "type": "choice",
+      "choice": "bounded_envelopes_and_sandboxing",
+      "confidence": 1,
+      "probabilities": {
+        "no_protection": 0,
+        "bounded_envelopes_and_sandboxing": 1
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 33237,
+    "output_tokens": 169
+  }
+}

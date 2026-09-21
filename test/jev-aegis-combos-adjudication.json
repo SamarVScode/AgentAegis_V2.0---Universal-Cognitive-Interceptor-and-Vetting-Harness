@@ -1,0 +1,41 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "best_aegis_brand_choice": {
+      "type": "choice",
+      "choice": "agent_aegis",
+      "confidence": 0.55,
+      "probabilities": {
+        "cogni_aegis": 0.01,
+        "code_aegis": 0,
+        "agent_aegis": 0.63,
+        "pure_aegis": 0.35,
+        "omni_aegis": 0.01
+      }
+    },
+    "cli_binary_name": {
+      "type": "choice",
+      "choice": "aegis",
+      "confidence": 1,
+      "probabilities": {
+        "aegis": 1,
+        "agent_aegis": 0,
+        "omni_aegis": 0
+      }
+    },
+    "definitive_recommendation": {
+      "type": "choice",
+      "choice": "pure_aegis_rec",
+      "confidence": 0.44,
+      "probabilities": {
+        "agent_aegis_rec": 0.23,
+        "pure_aegis_rec": 0.63,
+        "omni_aegis_rec": 0.14
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 963,
+    "output_tokens": 184
+  }
+}

@@ -1,0 +1,53 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "ready_to_be_used": {
+      "type": "choice",
+      "choice": "needs_further_hardening",
+      "confidence": 0.65,
+      "probabilities": {
+        "ready_for_production": 0.17,
+        "needs_further_hardening": 0.83
+      }
+    },
+    "token_savings_verdict": {
+      "type": "choice",
+      "choice": "tokens_will_be_saved",
+      "confidence": 0.93,
+      "probabilities": {
+        "tokens_will_not_be_saved": 0.04,
+        "tokens_will_be_saved": 0.96
+      }
+    },
+    "readiness_score": {
+      "type": "score",
+      "score": 1.29,
+      "confidence": 0.67,
+      "legend": {
+        "0": "Unusable/Broken",
+        "1": "Fragile/Experimental",
+        "2": "Production Ready",
+        "3": "Exceptional / Enterprise Grade"
+      },
+      "probabilities": {
+        "0": 0.02,
+        "1": 0.69,
+        "2": 0.27,
+        "3": 0.02
+      }
+    },
+    "operational_summary": {
+      "type": "choice",
+      "choice": "recommended_for_deployment",
+      "confidence": 0.02,
+      "probabilities": {
+        "do_not_deploy": 0.49,
+        "recommended_for_deployment": 0.51
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 32413,
+    "output_tokens": 152
+  }
+}

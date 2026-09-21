@@ -1,0 +1,322 @@
+#!/usr/bin/env node
+
+/**
+ * Universal Lifecycle Interceptor Coordinator (harness/interceptor.js)
+ * Coordinates preToolUse, postToolUse, and preExit lifecycle hooks.
+ * Integrates:
+ *   - sensitive-guard.js (Fastpath & exfiltration guard)
+ *   - core-laws-linter.js (Zero-token 4 Core Laws linter)
+ *   - cycle-detector.js (3 vs 5 thrashing circuit breaker + virtual shadow buffer)
+ *   - state-collector.js (Adaptive context envelope)
+ *   - jev-client.js (Native fetch client & bipartite fail-safe)
+ *   - acceptance-gate.js (Deterministic runner parser & Jev completion gate)
+ * 
+ * Mandated and calibrated by Jev (P=0.74 on lifecycle coordinator, P=0.74 on Windows event-driven stdin).
+ */
+
+import fs from 'fs';
+import path from 'path';
+import { createHash } from 'crypto';
+import { collectState } from './state-collector.js';
+import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
+import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
+import { evaluatePathSecurity, isReadInspectionTool } from './sensitive-guard.js';
+import { verifyAcceptanceGate } from './acceptance-gate.js';
+
+const rawArgs = process.argv.slice(2);
+const engineIdx = rawArgs.indexOf('--engine');
+const engine = engineIdx !== -1 ? rawArgs[engineIdx + 1] : (process.stdin.isTTY ? 'claude' : 'antigravity');
+const cleanArgs = rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 1);
+
+const [mode = 'pre-tool', arg1, arg2] = cleanArgs;
+
+// Helper to parse JSON with auto-stripping of shell single-quotes and resilient fallback
+export function safeParseJson(raw) {
+  if (!raw) return {};
+  const rawInput = String(raw).trim();
+  if (!rawInput) return {};
+
+  let cleaned = rawInput;
+  if (cleaned.startsWith("'") && cleaned.endsWith("'")) {
+    cleaned = cleaned.slice(1, -1).trim();
+  }
+  // Strip control and binary non-printable characters
+  cleaned = cleaned.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, '');
+
+  // 1. Direct standard parse
+  try {
+    return JSON.parse(cleaned);
+  } catch {}
+
+  // 2. Fix trailing commas (e.g. {"a": 1, "b": 2,})
+  try {
+    const fixed = cleaned.replace(/,\s*([}\]])/g, '$1');
+    return JSON.parse(fixed);
+  } catch {}
+
+  // 3. Fix single-quoted JSON (e.g. {'a': 'val', 'b': 2})
+  try {
+    const fixed = cleaned.replace(/'/g, '"');
+    return JSON.parse(fixed);
+  } catch {}
+
+  // 4. Extract embedded JSON object substring if surrounded by raw text/noise
+  try {
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[0]);
+      } catch {
+        const fixed = jsonMatch[0].replace(/,\s*([}\]])/g, '$1').replace(/'/g, '"');
+        return JSON.parse(fixed);
+      }
+    }
+  } catch {}
+
+  // 5. Unquoted keys and comma-delimited key-value fallback
+  try {
+    if (cleaned.includes(':')) {
+      const obj = {};
+      for (const part of cleaned.split(',')) {
+        const lastColon = part.lastIndexOf(':');
+        if (lastColon !== -1) {
+          const val = part.slice(lastColon + 1).trim().replace(/^['"]|['"]$/g, '');
+          const beforeColon = part.slice(0, lastColon).trim();
+          const keyMatch = beforeColon.match(/([a-zA-Z0-9_]+)$/);
+          if (keyMatch) {
+            obj[keyMatch[1]] = val;
+          }
+        }
+      }
+      if (Object.keys(obj).length > 0) return obj;
+    }
+  } catch {}
+
+  return {};
+}
+
+// Event-driven stdin stream reader with Windows grace timeout (Fix 4)
+export async function readStdinJson(timeoutMs = null) {
+  if (process.stdin.isTTY) return {};
+  const defaultTimeout = 500; // Uniform 500ms on all platforms (raised from 100ms Unix / 350ms Windows)
+  const effectiveTimeout = timeoutMs || defaultTimeout;
+
+  return new Promise((resolve) => {
+    let data = '';
+    let resolved = false;
+
+    const finish = (result) => {
+      if (!resolved) {
+        resolved = true;
+        clearTimeout(timer);
+        try { process.stdin.pause(); } catch {}
+        resolve(result);
+      }
+    };
+
+    const processPayload = (rawStr) => {
+      const parsed = safeParseJson(rawStr);
+      if (rawStr && rawStr.trim() && Object.keys(parsed).length === 0) {
+        if (isDestructiveAction('run_command', { CommandLine: rawStr })) {
+          console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.`);
+          process.exit(2);
+        }
+      }
+      return parsed;
+    };
+
+    const timer = setTimeout(() => {
+      finish(processPayload(data));
+    }, effectiveTimeout);
+
+    process.stdin.setEncoding('utf8');
+    process.stdin.on('data', chunk => { data += chunk; });
+    process.stdin.on('end', () => {
+      finish(processPayload(data));
+    });
+    process.stdin.on('error', () => {
+      finish({});
+    });
+  });
+}
+
+/**
+ * Main lifecycle dispatcher
+ */
+export async function runInterceptor() {
+  const cwdHash = createHash('sha256').update(process.cwd()).digest('hex').slice(0, 8);
+  const sessionId = process.env.CONVERSATION_ID || process.env.CLAUDE_CONVERSATION_ID || process.env.CURSOR_SESSION_ID || ('cwd-' + cwdHash);
+
+  // -------------------------------------------------------------------------
+  // HOOK 1: PRE-TOOL USE
+  // -------------------------------------------------------------------------
+  if (mode === 'pre-tool' || mode === 'preToolUse') {
+    let toolName = '';
+    let toolArgs = {};
+
+    if (engine === 'antigravity') {
+      const stdinData = await readStdinJson();
+      toolName = stdinData.toolCall?.name || stdinData.name || '';
+      toolArgs = stdinData.toolCall?.args || stdinData.args || {};
+    } else if (engine === 'claude' || engine === 'claude-code') {
+      const stdinData = await readStdinJson();
+      if (stdinData.tool_name) {
+        // Stdin envelope from Claude Code hook runtime
+        toolName = stdinData.tool_name;
+        toolArgs = stdinData.tool_input || {};
+      } else {
+        // CLI fallback (tests, direct invocation)
+        toolName = arg1 || '';
+        if (arg2) {
+          toolArgs = safeParseJson(arg2);
+          if (arg2.trim() && Object.keys(toolArgs).length === 0) {
+            if (isDestructiveAction('run_command', { CommandLine: arg2 })) {
+              console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in payload.`);
+              process.exit(2);
+            }
+          }
+        } else {
+          toolArgs = Object.keys(stdinData).length > 0 ? stdinData : {};
+        }
+      }
+    } else if (engine === 'cursor') {
+      const stdinData = await readStdinJson();
+      if (stdinData.name) {
+        // Stdin envelope from Cursor hook runtime
+        toolName = stdinData.name;
+        toolArgs = stdinData.arguments || {};
+      } else {
+        // CLI fallback
+        toolName = arg1 || '';
+        toolArgs = arg2 ? safeParseJson(arg2) : (Object.keys(stdinData).length > 0 ? stdinData : {});
+      }
+    } else {
+      toolName = arg1 || '';
+      if (arg2) {
+        toolArgs = safeParseJson(arg2);
+        if (arg2.trim() && Object.keys(toolArgs).length === 0) {
+          if (isDestructiveAction('run_command', { CommandLine: arg2 })) {
+            console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in payload.`);
+            process.exit(2);
+          }
+        }
+      } else {
+        const stdinData = await readStdinJson();
+        toolArgs = Object.keys(stdinData).length > 0 ? stdinData : {};
+      }
+    }
+
+    const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || '';
+    const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
+
+    // Virtual whole-file buffer reconstruction for replace_file_content (Fix 3)
+    let wholeFileContent = newContent;
+    if (toolName === 'replace_file_content' || toolName.includes('replace')) {
+      wholeFileContent = reconstructShadowBuffer(
+        targetFile,
+        toolArgs.TargetContent || '',
+        toolArgs.ReplacementContent || '',
+        sessionId
+      );
+    } else if (toolName === 'write_to_file' || toolName.includes('write')) {
+      wholeFileContent = newContent;
+    }
+
+    // Step 1: Sensitive Credential Read Guard (Layer 1 Fastpath vs Layer 2 Security)
+    if (isReadInspectionTool(toolName)) {
+      const secResult = await evaluatePathSecurity(toolName, targetFile, process.env.TASK_DESCRIPTION);
+      if (secResult.fastpath) {
+        // Fastpath approved: 0 tokens, 0ms latency
+        process.exit(0);
+      }
+      if (!secResult.approved) {
+        console.error(secResult.reason);
+        process.exit(2); // Hard exit 2 veto
+      }
+    }
+
+    // Step 2: Diff Variance Cycle Detector & Thrashing Circuit Breaker (Universal)
+    const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId);
+    if (cycle.isThrashing) {
+      console.error(cycle.critique);
+      process.exit(2); // Hard block repetitive thrashing
+    }
+    if (cycle.warning && cycle.critique) {
+      console.error(cycle.critique);
+    }
+
+    // Step 4: Destructive Side-Effect Vetting via Jev System One
+    const isDestructive = isDestructiveAction(toolName, toolArgs);
+    if (isDestructive) {
+      const state = collectState(process.env.TASK_DESCRIPTION, toolName, toolArgs, sessionId, '', 'localized');
+      const jevCheck = await jevBooleanCheck({
+        state,
+        assertion: 'Is this operation safe to proceed without risking irrecoverable data loss, database destruction, or repository corruption?',
+        criteriaTrue: 'The operation is safe, intentional, and standard for the task.',
+        criteriaFalse: 'The operation risks catastrophic data loss, database drops, hard git resets, or directory wipes.',
+        isDestructive: true
+      });
+
+      if (!jevCheck.approved) {
+        console.error(`[JEV SAFETY VETO]: Operation '${toolName}' blocked by Jev safety filter: ${jevCheck.reason || 'High risk of destructive data loss.'}`);
+        process.exit(2);
+      }
+    }
+
+    // Approved to proceed
+    process.exit(0);
+  }
+
+  // -------------------------------------------------------------------------
+  // HOOK 2: POST-TOOL USE
+  // -------------------------------------------------------------------------
+  if (mode === 'post-tool' || mode === 'postToolUse') {
+    const stdinData = await readStdinJson();
+    const isError = stdinData.isError || stdinData.error;
+    const stderr = stdinData.stderr || (isError ? String(stdinData.output || '') : '');
+
+    if (stderr) {
+      // Store last stderr in session for adaptive failure enveloping
+      const session = loadSession(sessionId);
+      session.lastStderr = stderr.slice(-1500);
+      saveSession(session, sessionId);
+    }
+
+    process.exit(0);
+  }
+
+  // -------------------------------------------------------------------------
+  // HOOK 3: VERIFY GATE / PRE-EXIT
+  // -------------------------------------------------------------------------
+  if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit') {
+    const stdinData = await readStdinJson();
+    const customCmd = arg1 || stdinData.command || stdinData.customCommand || null;
+    const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
+    const gateResult = await verifyAcceptanceGate(customCmd, process.cwd(), agentStatement, sessionId);
+
+    if (gateResult.passed) {
+      console.error(`\n======================================================`);
+      console.error(`[JEV ACCEPTANCE GATE]: Verification Passed (${gateResult.reason})`);
+      console.error(`======================================================\n`);
+      process.exit(0);
+    } else {
+      console.error(`\n======================================================`);
+      console.error(`[JEV ACCEPTANCE GATE REJECTED]: ${gateResult.reason}`);
+      console.error(`Exit Code: ${gateResult.exitCode ?? 'none'} | Tests Run: ${gateResult.testsRun ?? 'none'}`);
+      console.error(`Agent completion halted. Resolve failing tests before terminating.`);
+      console.error(`======================================================\n`);
+      process.exit(2); // Veto termination
+    }
+  }
+
+  // Default passthrough
+  process.exit(0);
+}
+
+if (process.argv[1] && process.argv[1].endsWith('interceptor.js')) {
+  runInterceptor().catch(err => {
+    console.error('Interceptor unexpected error:', err.message);
+    console.error(err.stack || '(no stack trace available)');
+    process.exit(0); // Fail open gracefully on internal unexpected error
+  });
+}

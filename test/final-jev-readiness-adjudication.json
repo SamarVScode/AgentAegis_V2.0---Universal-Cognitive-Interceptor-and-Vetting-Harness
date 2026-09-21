@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-09-20T15:27:20.535Z",
+  "model": "jev-1.13.0",
+  "usage": {
+    "input_tokens": 2507,
+    "output_tokens": 89
+  },
+  "results": {
+    "is_ready": {
+      "approved": false,
+      "probability": 0.32,
+      "confidence": 0.36
+    },
+    "rubric": {
+      "score": 2.9,
+      "description": "Level 3: Production-hardened, defense-in-depth, 4-tier triage with deterministic gates verified and zero breaches."
+    },
+    "deployment": {
+      "choice": "ready_for_production",
+      "probabilities": {
+        "ready_for_production": 0.64,
+        "experimental_only": 0.26,
+        "needs_further_remediation": 0.1
+      }
+    }
+  },
+  "deterministic_proof": {
+    "npm_test": "11/11 modules passed, 0 failed",
+    "test_breach_verification": "11/11 threat vectors passed, 0 failed",
+    "node_test_js": "5/5 Jev MCP server tests passed, 0 failed"
+  },
+  "modules_evaluated": [
+    "acceptance-gate.js",
+    "core-laws-linter.js",
+    "cycle-detector.js",
+    "diff-variance.js",
+    "install.js",
+    "interceptor.js",
+    "jev-client.js",
+    "jev-vetter.js",
+    "manifest-sniffer.js",
+    "runner-parser.js",
+    "sensitive-guard.js",
+    "state-collector.js"
+  ]
+}

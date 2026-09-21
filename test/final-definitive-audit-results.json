@@ -1,0 +1,534 @@
+{
+  "metadata": {
+    "audit_type": "Definitive Holistic Aegis Harness Audit",
+    "governance_engine": "TypeSafe AI Jev (jev-1.13.0)",
+    "api_endpoint": "https://api.typesafe.ai/v1/systemone",
+    "adjudication_threshold": "P >= 0.70 for Confirmed Issue",
+    "timestamp": "2026-09-20T15:14:10.211Z",
+    "total_candidates": 11,
+    "total_confirmed_issues": 11,
+    "total_non_issues": 0
+  },
+  "summary": {
+    "critical": 6,
+    "high": 4,
+    "medium": 1,
+    "low": 0,
+    "non_issues": 0
+  },
+  "confirmed_issues": [
+    {
+      "candidate_id": "ISSUE-01",
+      "title": "Signature Mismatch in isDestructiveAction across jev-client.js and jev-vetter.js",
+      "target_modules": [
+        "harness/jev-client.js",
+        "harness/jev-vetter.js",
+        "harness/interceptor.js"
+      ],
+      "exact_locations": "harness/jev-client.js:26-91 vs harness/jev-vetter.js:33-99",
+      "is_genuine_issue": {
+        "probability": 0.92,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "medium": 0,
+        "high": 0,
+        "intended_design_non_issue": 0,
+        "low": 0,
+        "critical": 1
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 0.87,
+      "remediation": {
+        "proposed_action": "Refactor isDestructiveAction in both modules (or unify into jev-client.js and re-export in jev-vetter.js) to accept polymorphic arguments:\nif (typeof toolNameOrState === 'object' && toolNameOrState !== null) {\n  tool = (toolNameOrState.proposed_tool || toolNameOrState.tool || '').toLowerCase();\n  args = toolNameOrState.tool_args || toolNameOrState.args || {};\n} else {\n  tool = String(toolNameOrState || '').toLowerCase();\n  args = toolArgs || {};\n}",
+        "soundness_probability": 0.78,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1534,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:03.803Z"
+    },
+    {
+      "candidate_id": "ISSUE-02",
+      "title": "Omission of Native Windows Command & Shell Aliases in isDestructiveAction",
+      "target_modules": [
+        "harness/jev-client.js",
+        "harness/jev-vetter.js"
+      ],
+      "exact_locations": "harness/jev-client.js:33-64, harness/jev-vetter.js:41-72",
+      "is_genuine_issue": {
+        "probability": 0.94,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "high": 0,
+        "low": 0,
+        "medium": 0,
+        "intended_design_non_issue": 0,
+        "critical": 1
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 0.98,
+      "remediation": {
+        "proposed_action": "Add Windows aliases and PowerShell Core to destructiveCmdPatterns:\n- /\\b(rd|rmdir)\\s+(\\/[a-z]\\s+)*\\/[sq]/i\n- /\\berase\\s+(\\/[a-z]\\s+)*\\/[fq]/i\n- /\\b(remove-item|ri|rmdir|del)\\b.*(-r|-recurse).*(-fo|-force)/i\n- Update encoded command regex to: /(powershell|pwsh)(\\.exe)?\\s+.*-(enc|encodedcommand|e)\\s+([A-Za-z0-9+/=]+)/i",
+        "soundness_probability": 0.63,
+        "endorsed": false
+      },
+      "usage": {
+        "input_tokens": 1635,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:04.428Z"
+    },
+    {
+      "candidate_id": "ISSUE-03",
+      "title": "Path Normalization Lacking Windows Backslash Support & Relative Traversal in sensitive-guard.js",
+      "target_modules": [
+        "harness/sensitive-guard.js"
+      ],
+      "exact_locations": "harness/sensitive-guard.js:9-20, 44-57",
+      "is_genuine_issue": {
+        "probability": 0.88,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 0.43,
+      "severity_distribution": {
+        "critical": 0.55,
+        "high": 0.4,
+        "intended_design_non_issue": 0,
+        "low": 0,
+        "medium": 0.04
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "Normalize pathStr at the beginning of isSensitivePath:\nconst normalized = path.normalize(String(targetPath || '')).replace(/\\\\/g, '/');\nAnd update pattern: /(^|[\\/]|([a-z]:[\\/]))etc[\\/](shadow|passwd)/i",
+        "soundness_probability": 0.39,
+        "endorsed": false
+      },
+      "usage": {
+        "input_tokens": 1563,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:05.033Z"
+    },
+    {
+      "candidate_id": "ISSUE-04",
+      "title": "Nested Sensitive Directory Traversal: Omitting Files Inside Secret Folders in sensitive-guard.js",
+      "target_modules": [
+        "harness/sensitive-guard.js"
+      ],
+      "exact_locations": "harness/sensitive-guard.js:13-16, 44-57",
+      "is_genuine_issue": {
+        "probability": 0.9,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 0.73,
+      "severity_distribution": {
+        "intended_design_non_issue": 0,
+        "high": 0.2,
+        "low": 0,
+        "medium": 0.01,
+        "critical": 0.79
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "Add directory-level patterns to SENSITIVE_PATH_PATTERNS:\n- /(^|[\\/\\\\])(\\.?secrets|credentials|certs|private_keys)[\\/\\\\]/i\n- /(^|[\\/\\\\])config[\\/\\\\](secrets|keys|certs)[\\/\\\\]/i",
+        "soundness_probability": 0.77,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1358,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:05.665Z"
+    },
+    {
+      "candidate_id": "ISSUE-07",
+      "title": "Unsanitized customCommand Execution in verifyAcceptanceGate (acceptance-gate.js)",
+      "target_modules": [
+        "harness/acceptance-gate.js"
+      ],
+      "exact_locations": "harness/acceptance-gate.js:19-39, 96-102",
+      "is_genuine_issue": {
+        "probability": 0.89,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "medium": 0,
+        "intended_design_non_issue": 0,
+        "critical": 1,
+        "low": 0,
+        "high": 0
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "Validate customCommand before execution:\nif (customCommand) {\n  if (isDestructiveAction('acceptance_gate', { command: customCommand })) {\n    return { passed: false, reason: 'Custom test command contains destructive actions or hazardous patterns.' };\n  }\n}",
+        "soundness_probability": 0.56,
+        "endorsed": false
+      },
+      "usage": {
+        "input_tokens": 1455,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:07.528Z"
+    },
+    {
+      "candidate_id": "ISSUE-11",
+      "title": "Malformed JSON Tool Calls in safeParseJson Falling Back to Empty Object and Bypassing Destructive Gate",
+      "target_modules": [
+        "harness/interceptor.js"
+      ],
+      "exact_locations": "harness/interceptor.js:34-93, 142-154, 201-217",
+      "is_genuine_issue": {
+        "probability": 0.88,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "critical",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "intended_design_non_issue": 0,
+        "low": 0,
+        "medium": 0,
+        "high": 0,
+        "critical": 1
+      },
+      "impact_domain": "security_integrity",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "If safeParseJson returns an empty object from a non-empty raw string:\nconst rawStr = String(raw || '');\nif (rawStr.trim().length > 0) {\n  // Check if raw unparsed payload contains destructive patterns\n  if (isDestructiveAction('raw_payload', { command: rawStr })) {\n    console.error('⚠️ [JEV SECURITY BLOCK]: Malformed tool call payload contains destructive patterns. Hard fail-closed enforced.');\n    process.exit(2);\n  }\n}",
+        "soundness_probability": 0.59,
+        "endorsed": false
+      },
+      "usage": {
+        "input_tokens": 1512,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:09.947Z"
+    },
+    {
+      "candidate_id": "ISSUE-05",
+      "title": "Hybrid Workspace Ecosystem Contamination in manifest-sniffer.js Triggering False Core Law Vetoes",
+      "target_modules": [
+        "harness/manifest-sniffer.js",
+        "harness/core-laws-linter.js"
+      ],
+      "exact_locations": "harness/manifest-sniffer.js:38-61, harness/core-laws-linter.js:23, 45-62",
+      "is_genuine_issue": {
+        "probability": 0.93,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "high",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "high": 1,
+        "low": 0,
+        "medium": 0,
+        "intended_design_non_issue": 0,
+        "critical": 0
+      },
+      "impact_domain": "developer_experience",
+      "impact_domain_confidence": 0.99,
+      "remediation": {
+        "proposed_action": "Refine isGasContext:\nIf .clasp.json exists, read its 'rootDir' setting if available. Only return true if filePath is inside clasp rootDir, or ends with .gs, or is inside a /gas/, /appsscript/, or /clasp/ directory, or contains GAS APIs. If filePath has typical frontend/web extensions (.tsx, .jsx, .vue, .svelte, .py) and does NOT contain GAS APIs, do NOT flag it as GAS.",
+        "soundness_probability": 0.71,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1576,
+        "output_tokens": 156
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:06.304Z"
+    },
+    {
+      "candidate_id": "ISSUE-06",
+      "title": "Test Runner Output Parser Blindspots in runner-parser.js (Mocha, TAP Streams, 100% Skipped)",
+      "target_modules": [
+        "harness/runner-parser.js"
+      ],
+      "exact_locations": "harness/runner-parser.js:53-96, 182-197",
+      "is_genuine_issue": {
+        "probability": 0.93,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "high",
+      "severity_confidence": 0.99,
+      "severity_distribution": {
+        "low": 0,
+        "high": 0.99,
+        "critical": 0.01,
+        "intended_design_non_issue": 0,
+        "medium": 0
+      },
+      "impact_domain": "runtime_correctness",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "Add to runner-parser.js:\n- Mocha failure parser: combined.match(/(\\d+)\\s+passing.*(\\d+)\\s+failing/is) or /(\\d+)\\s+failing/i\n- TAP stream parser: /^not ok\\s+\\d+/m or /# fail\\s+([1-9]\\d*)/i\n- Skipped-only detection: combined.match(/Tests:\\s+(\\d+)\\s+skipped,\\s+(\\d+)\\s+total/i) -> if skipped === total, return passed: false",
+        "soundness_probability": 0.68,
+        "endorsed": false
+      },
+      "usage": {
+        "input_tokens": 1572,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:06.908Z"
+    },
+    {
+      "candidate_id": "ISSUE-09",
+      "title": "Virtual Shadow Buffer Fallback Corrupting Buffer on Whitespace/CRLF Drift (cycle-detector.js)",
+      "target_modules": [
+        "harness/cycle-detector.js"
+      ],
+      "exact_locations": "harness/cycle-detector.js:58-69",
+      "is_genuine_issue": {
+        "probability": 0.92,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "high",
+      "severity_confidence": 1,
+      "severity_distribution": {
+        "low": 0,
+        "intended_design_non_issue": 0,
+        "critical": 0,
+        "medium": 0,
+        "high": 1
+      },
+      "impact_domain": "runtime_correctness",
+      "impact_domain_confidence": 1,
+      "remediation": {
+        "proposed_action": "In reconstructShadowBuffer:\n- Normalize line endings: reconstructed.replace(/\\r\\n/g, '\\n') and targetContent.replace(/\\r\\n/g, '\\n').\n- If targetContent is specified but cannot be found, do NOT append replacementContent to EOF. Keep reconstructed as baseContent (or return baseContent without writing corrupted shadow).",
+        "soundness_probability": 0.81,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1404,
+        "output_tokens": 155
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:08.764Z"
+    },
+    {
+      "candidate_id": "ISSUE-10",
+      "title": "Diff Variance Scaling Flaws on Large Files (>2500 chars): Set Collisions & Skipped Structural Checks",
+      "target_modules": [
+        "harness/diff-variance.js"
+      ],
+      "exact_locations": "harness/diff-variance.js:74-102",
+      "is_genuine_issue": {
+        "probability": 0.9,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "high",
+      "severity_confidence": 0.76,
+      "severity_distribution": {
+        "intended_design_non_issue": 0,
+        "low": 0,
+        "critical": 0,
+        "medium": 0.19,
+        "high": 0.81
+      },
+      "impact_domain": "developer_experience",
+      "impact_domain_confidence": 0.46,
+      "remediation": {
+        "proposed_action": "Move the structural check above the maxLen > 2500 branch:\nconst pStruct = normalizeStructure(p);\nconst cStruct = normalizeStructure(c);\nif (pStruct === cStruct && p !== c) return 0.05;\nAnd replace Set.has with frequency counting Map.",
+        "soundness_probability": 0.76,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1584,
+        "output_tokens": 156
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:09.374Z"
+    },
+    {
+      "candidate_id": "ISSUE-08",
+      "title": "Cycle Detector Telemetry Distortion: checkCycle Returning Default repeatCount: 1 when isThrashing is False",
+      "target_modules": [
+        "harness/cycle-detector.js"
+      ],
+      "exact_locations": "harness/cycle-detector.js:183-211, 257-263",
+      "is_genuine_issue": {
+        "probability": 0.87,
+        "confirmed": true,
+        "classification": "CONFIRMED_ISSUE"
+      },
+      "severity": "medium",
+      "severity_confidence": 0.97,
+      "severity_distribution": {
+        "medium": 0.98,
+        "critical": 0,
+        "low": 0,
+        "intended_design_non_issue": 0,
+        "high": 0.02
+      },
+      "impact_domain": "developer_experience",
+      "impact_domain_confidence": 0.98,
+      "remediation": {
+        "proposed_action": "Store the computed consecutive count in a local variable before the thrashing check, and return it in the final result:\nlet computedRepeatCount = 1;\nif (targetFile && len >= 1) {\n  // calculate recentEdits\n  computedRepeatCount = recentEdits.length;\n  if (computedRepeatCount >= allowed) return { isThrashing: true, repeatCount: computedRepeatCount, ... };\n}\nreturn { isThrashing: false, repeatCount: computedRepeatCount, ... };",
+        "soundness_probability": 0.88,
+        "endorsed": true
+      },
+      "usage": {
+        "input_tokens": 1605,
+        "output_tokens": 156
+      },
+      "model": "jev-1.13.0",
+      "adjudicated_at": "2026-09-20T15:14:08.139Z"
+    }
+  ],
+  "non_issues_or_intended_design": [],
+  "prioritized_remediation_roadmap": [
+    {
+      "priority": 1,
+      "id": "ISSUE-01",
+      "title": "Signature Mismatch in isDestructiveAction across jev-client.js and jev-vetter.js",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.92,
+      "target_module": "harness/jev-client.js, harness/jev-vetter.js, harness/interceptor.js",
+      "exact_locations": "harness/jev-client.js:26-91 vs harness/jev-vetter.js:33-99",
+      "remediation_action": "Refactor isDestructiveAction in both modules (or unify into jev-client.js and re-export in jev-vetter.js) to accept polymorphic arguments:\nif (typeof toolNameOrState === 'object' && toolNameOrState !== null) {\n  tool = (toolNameOrState.proposed_tool || toolNameOrState.tool || '').toLowerCase();\n  args = toolNameOrState.tool_args || toolNameOrState.args || {};\n} else {\n  tool = String(toolNameOrState || '').toLowerCase();\n  args = toolArgs || {};\n}"
+    },
+    {
+      "priority": 2,
+      "id": "ISSUE-02",
+      "title": "Omission of Native Windows Command & Shell Aliases in isDestructiveAction",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.94,
+      "target_module": "harness/jev-client.js, harness/jev-vetter.js",
+      "exact_locations": "harness/jev-client.js:33-64, harness/jev-vetter.js:41-72",
+      "remediation_action": "Add Windows aliases and PowerShell Core to destructiveCmdPatterns:\n- /\\b(rd|rmdir)\\s+(\\/[a-z]\\s+)*\\/[sq]/i\n- /\\berase\\s+(\\/[a-z]\\s+)*\\/[fq]/i\n- /\\b(remove-item|ri|rmdir|del)\\b.*(-r|-recurse).*(-fo|-force)/i\n- Update encoded command regex to: /(powershell|pwsh)(\\.exe)?\\s+.*-(enc|encodedcommand|e)\\s+([A-Za-z0-9+/=]+)/i"
+    },
+    {
+      "priority": 3,
+      "id": "ISSUE-03",
+      "title": "Path Normalization Lacking Windows Backslash Support & Relative Traversal in sensitive-guard.js",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.88,
+      "target_module": "harness/sensitive-guard.js",
+      "exact_locations": "harness/sensitive-guard.js:9-20, 44-57",
+      "remediation_action": "Normalize pathStr at the beginning of isSensitivePath:\nconst normalized = path.normalize(String(targetPath || '')).replace(/\\\\/g, '/');\nAnd update pattern: /(^|[\\/]|([a-z]:[\\/]))etc[\\/](shadow|passwd)/i"
+    },
+    {
+      "priority": 4,
+      "id": "ISSUE-04",
+      "title": "Nested Sensitive Directory Traversal: Omitting Files Inside Secret Folders in sensitive-guard.js",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.9,
+      "target_module": "harness/sensitive-guard.js",
+      "exact_locations": "harness/sensitive-guard.js:13-16, 44-57",
+      "remediation_action": "Add directory-level patterns to SENSITIVE_PATH_PATTERNS:\n- /(^|[\\/\\\\])(\\.?secrets|credentials|certs|private_keys)[\\/\\\\]/i\n- /(^|[\\/\\\\])config[\\/\\\\](secrets|keys|certs)[\\/\\\\]/i"
+    },
+    {
+      "priority": 5,
+      "id": "ISSUE-07",
+      "title": "Unsanitized customCommand Execution in verifyAcceptanceGate (acceptance-gate.js)",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.89,
+      "target_module": "harness/acceptance-gate.js",
+      "exact_locations": "harness/acceptance-gate.js:19-39, 96-102",
+      "remediation_action": "Validate customCommand before execution:\nif (customCommand) {\n  if (isDestructiveAction('acceptance_gate', { command: customCommand })) {\n    return { passed: false, reason: 'Custom test command contains destructive actions or hazardous patterns.' };\n  }\n}"
+    },
+    {
+      "priority": 6,
+      "id": "ISSUE-11",
+      "title": "Malformed JSON Tool Calls in safeParseJson Falling Back to Empty Object and Bypassing Destructive Gate",
+      "severity": "critical",
+      "impact_domain": "security_integrity",
+      "probability": 0.88,
+      "target_module": "harness/interceptor.js",
+      "exact_locations": "harness/interceptor.js:34-93, 142-154, 201-217",
+      "remediation_action": "If safeParseJson returns an empty object from a non-empty raw string:\nconst rawStr = String(raw || '');\nif (rawStr.trim().length > 0) {\n  // Check if raw unparsed payload contains destructive patterns\n  if (isDestructiveAction('raw_payload', { command: rawStr })) {\n    console.error('⚠️ [JEV SECURITY BLOCK]: Malformed tool call payload contains destructive patterns. Hard fail-closed enforced.');\n    process.exit(2);\n  }\n}"
+    },
+    {
+      "priority": 7,
+      "id": "ISSUE-05",
+      "title": "Hybrid Workspace Ecosystem Contamination in manifest-sniffer.js Triggering False Core Law Vetoes",
+      "severity": "high",
+      "impact_domain": "developer_experience",
+      "probability": 0.93,
+      "target_module": "harness/manifest-sniffer.js, harness/core-laws-linter.js",
+      "exact_locations": "harness/manifest-sniffer.js:38-61, harness/core-laws-linter.js:23, 45-62",
+      "remediation_action": "Refine isGasContext:\nIf .clasp.json exists, read its 'rootDir' setting if available. Only return true if filePath is inside clasp rootDir, or ends with .gs, or is inside a /gas/, /appsscript/, or /clasp/ directory, or contains GAS APIs. If filePath has typical frontend/web extensions (.tsx, .jsx, .vue, .svelte, .py) and does NOT contain GAS APIs, do NOT flag it as GAS."
+    },
+    {
+      "priority": 8,
+      "id": "ISSUE-06",
+      "title": "Test Runner Output Parser Blindspots in runner-parser.js (Mocha, TAP Streams, 100% Skipped)",
+      "severity": "high",
+      "impact_domain": "runtime_correctness",
+      "probability": 0.93,
+      "target_module": "harness/runner-parser.js",
+      "exact_locations": "harness/runner-parser.js:53-96, 182-197",
+      "remediation_action": "Add to runner-parser.js:\n- Mocha failure parser: combined.match(/(\\d+)\\s+passing.*(\\d+)\\s+failing/is) or /(\\d+)\\s+failing/i\n- TAP stream parser: /^not ok\\s+\\d+/m or /# fail\\s+([1-9]\\d*)/i\n- Skipped-only detection: combined.match(/Tests:\\s+(\\d+)\\s+skipped,\\s+(\\d+)\\s+total/i) -> if skipped === total, return passed: false"
+    },
+    {
+      "priority": 9,
+      "id": "ISSUE-09",
+      "title": "Virtual Shadow Buffer Fallback Corrupting Buffer on Whitespace/CRLF Drift (cycle-detector.js)",
+      "severity": "high",
+      "impact_domain": "runtime_correctness",
+      "probability": 0.92,
+      "target_module": "harness/cycle-detector.js",
+      "exact_locations": "harness/cycle-detector.js:58-69",
+      "remediation_action": "In reconstructShadowBuffer:\n- Normalize line endings: reconstructed.replace(/\\r\\n/g, '\\n') and targetContent.replace(/\\r\\n/g, '\\n').\n- If targetContent is specified but cannot be found, do NOT append replacementContent to EOF. Keep reconstructed as baseContent (or return baseContent without writing corrupted shadow)."
+    },
+    {
+      "priority": 10,
+      "id": "ISSUE-10",
+      "title": "Diff Variance Scaling Flaws on Large Files (>2500 chars): Set Collisions & Skipped Structural Checks",
+      "severity": "high",
+      "impact_domain": "developer_experience",
+      "probability": 0.9,
+      "target_module": "harness/diff-variance.js",
+      "exact_locations": "harness/diff-variance.js:74-102",
+      "remediation_action": "Move the structural check above the maxLen > 2500 branch:\nconst pStruct = normalizeStructure(p);\nconst cStruct = normalizeStructure(c);\nif (pStruct === cStruct && p !== c) return 0.05;\nAnd replace Set.has with frequency counting Map."
+    },
+    {
+      "priority": 11,
+      "id": "ISSUE-08",
+      "title": "Cycle Detector Telemetry Distortion: checkCycle Returning Default repeatCount: 1 when isThrashing is False",
+      "severity": "medium",
+      "impact_domain": "developer_experience",
+      "probability": 0.87,
+      "target_module": "harness/cycle-detector.js",
+      "exact_locations": "harness/cycle-detector.js:183-211, 257-263",
+      "remediation_action": "Store the computed consecutive count in a local variable before the thrashing check, and return it in the final result:\nlet computedRepeatCount = 1;\nif (targetFile && len >= 1) {\n  // calculate recentEdits\n  computedRepeatCount = recentEdits.length;\n  if (computedRepeatCount >= allowed) return { isThrashing: true, repeatCount: computedRepeatCount, ... };\n}\nreturn { isThrashing: false, repeatCount: computedRepeatCount, ... };"
+    }
+  ]
+}

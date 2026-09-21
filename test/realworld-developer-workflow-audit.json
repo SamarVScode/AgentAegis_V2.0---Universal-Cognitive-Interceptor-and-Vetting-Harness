@@ -1,0 +1,389 @@
+{
+  "metadata": {
+    "suite": "TypeSafe Aegis Real-World Developer Workflow & DX Audit",
+    "timestamp": "2026-09-20T14:42:58.561Z",
+    "governingModel": "jev-1.13.0",
+    "endpoint": "https://api.typesafe.ai/v1/systemone",
+    "sessionId": "dx-audit-1789915378561"
+  },
+  "suites": {
+    "Workflow 1: Google Apps Script & Spreadsheet Development": {
+      "name": "Workflow 1: Google Apps Script & Spreadsheet Development",
+      "tests": [
+        {
+          "testId": "1.1_custom_function_hardcoded_indices",
+          "description": "Catches hardcoded row[i] in custom GAS spreadsheet function",
+          "passed": true,
+          "details": {
+            "count": 2,
+            "rules": [
+              "header-map-law",
+              "header-map-law"
+            ]
+          }
+        },
+        {
+          "testId": "1.2_loop_sheet_io",
+          "description": "Catches getRange().setValue() inside loop in GAS batch logic",
+          "passed": true,
+          "details": {
+            "violations": [
+              "client-compute-law"
+            ]
+          }
+        },
+        {
+          "testId": "1.3_unserialized_date_rpc",
+          "description": "Catches raw new Date() across google.script.run boundary",
+          "passed": true,
+          "details": {
+            "violations": [
+              "safe-serialization-law"
+            ]
+          }
+        },
+        {
+          "testId": "1.4_flat_scope_es6",
+          "description": "Catches ES6 import/export in GAS flat execution environment",
+          "passed": true,
+          "details": {
+            "violations": [
+              "FLAT_SCOPE_LAW",
+              "FLAT_SCOPE_LAW"
+            ]
+          }
+        },
+        {
+          "testId": "1.5_pragma_preceding_line",
+          "description": "Preceding // aegis-ignore: header-map-law allows intentional index access cleanly",
+          "passed": true,
+          "details": {
+            "clean": true
+          }
+        },
+        {
+          "testId": "1.6_pragma_inline",
+          "description": "Inline // aegis-ignore: header-map-law allows intentional index access cleanly",
+          "passed": true,
+          "details": {
+            "clean": true
+          }
+        },
+        {
+          "testId": "1.7_dynamic_header_batching",
+          "description": "Dynamic header mapping and in-memory batching pass cleanly with 0 violations",
+          "passed": true,
+          "details": {
+            "clean": true
+          }
+        },
+        {
+          "testId": "1.8_gas_web_app_handler",
+          "description": "Full GAS Web App doGet handler with dynamic indices and ISO serialization passes cleanly",
+          "passed": true,
+          "details": {
+            "clean": true
+          }
+        },
+        {
+          "testId": "1.9_non_gas_archetype_isolation",
+          "description": "TypeScript/React component with row[0] passes with 0 violations (GAS rules strictly isolated)",
+          "passed": true,
+          "details": {
+            "clean": true
+          }
+        },
+        {
+          "testId": "1.10_critique_actionability",
+          "description": "Core Laws critique provides clear rule name, line number, snippet, and actionable remedy",
+          "passed": true,
+          "details": {
+            "reportSnippet": "⚠️ [JEV CORE LAWS VETO]: Found 2 non-negotiable architectural violation(s):\n\n  1. [HEADER_MAP_LAW] Line 2: Violation of Header Map Law: Hardcoded numeric index '[1]' detected in GAS context.\n     Code"
+          }
+        }
+      ]
+    },
+    "Workflow 2: Full-Stack & TypeScript Refactoring": {
+      "name": "Workflow 2: Full-Stack & TypeScript Refactoring",
+      "tests": [
+        {
+          "testId": "2.1_multifile_productive_flow",
+          "description": "Productive multi-file refactoring sequence across models, controllers, and tests is never blocked",
+          "passed": true,
+          "details": {
+            "stepsRun": 7,
+            "traces": [
+              {
+                "file": "src/models/account.model.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "src/services/account.service.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "src/controllers/account.controller.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "src/routes/account.routes.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "tests/unit/account.service.test.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "tests/e2e/account.e2e.test.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              },
+              {
+                "file": "src/models/account.model.ts",
+                "isThrashing": false,
+                "repeatCount": 1
+              }
+            ]
+          }
+        },
+        {
+          "testId": "2.2_legitimate_repeated_edits_allowed",
+          "description": "Substantive edits (>15% variance) on same file are permitted up to 5 iterations (never blocked at 3)",
+          "passed": true,
+          "details": {
+            "iterationsRun": 4,
+            "editDetails": [
+              {
+                "iteration": 1,
+                "variance": 1,
+                "isSubstantive": true,
+                "allowedRepeats": 5,
+                "repeatCount": 1,
+                "isThrashing": false
+              },
+              {
+                "iteration": 2,
+                "variance": 0.47,
+                "isSubstantive": true,
+                "allowedRepeats": 5,
+                "repeatCount": 1,
+                "isThrashing": false
+              },
+              {
+                "iteration": 3,
+                "variance": 0.41,
+                "isSubstantive": true,
+                "allowedRepeats": 5,
+                "repeatCount": 1,
+                "isThrashing": false
+              },
+              {
+                "iteration": 4,
+                "variance": 0.27,
+                "isSubstantive": true,
+                "allowedRepeats": 5,
+                "repeatCount": 1,
+                "isThrashing": false
+              }
+            ]
+          }
+        },
+        {
+          "testId": "2.3_trivial_churn_blocked_at_3",
+          "description": "Trivial churn (<15% variance) on same file is intercepted and blocked at iteration 3",
+          "passed": true,
+          "details": {
+            "churnBlocked": true,
+            "churnBlockIteration": 3,
+            "churnDetails": [
+              {
+                "iteration": 1,
+                "variance": 1,
+                "isSubstantive": true,
+                "isThrashing": false
+              },
+              {
+                "iteration": 2,
+                "variance": 0.01,
+                "isSubstantive": false,
+                "isThrashing": false
+              },
+              {
+                "iteration": 3,
+                "variance": 0.01,
+                "isSubstantive": false,
+                "isThrashing": true,
+                "reason": "trivial_diff_churn"
+              }
+            ]
+          }
+        },
+        {
+          "testId": "2.4_oscillating_loop_detection",
+          "description": "2-step oscillating cycle (A -> B -> A -> B) is detected and halted",
+          "passed": true,
+          "details": {
+            "oscTripped": true
+          }
+        },
+        {
+          "testId": "2.5_triangular_loop_detection",
+          "description": "3-step triangular circular cycle (A -> B -> C -> A -> B -> C) is detected and halted",
+          "passed": true,
+          "details": {
+            "triTripped": true
+          }
+        }
+      ]
+    },
+    "Workflow 3: Interactive Debugging & Error Recovery": {
+      "name": "Workflow 3: Interactive Debugging & Error Recovery",
+      "tests": [
+        {
+          "testId": "3.1_debug_hypothesis_1",
+          "description": "Hypothesis 1 (regex parsing) allowed smoothly as exploratory edit",
+          "passed": true,
+          "details": {
+            "repeatCount": 1,
+            "isThrashing": false
+          }
+        },
+        {
+          "testId": "3.2_debug_hypothesis_2",
+          "description": "Hypothesis 2 (timestamp parsing) recognized as substantive and allowed without friction",
+          "passed": true,
+          "details": {
+            "returnedRepeatCount": 1,
+            "variance": 0.56,
+            "isThrashing": false
+          }
+        },
+        {
+          "testId": "3.3_debug_hypothesis_3",
+          "description": "Hypothesis 3 (calendar validation) allowed at iteration 3 due to substantive variance threshold",
+          "passed": true,
+          "details": {
+            "returnedRepeatCount": 1,
+            "allowedRepeats": 5,
+            "variance": 0.49,
+            "isThrashing": false
+          }
+        },
+        {
+          "testId": "3.4_interleaved_action_chain_break",
+          "description": "Interleaving test run or another tool resets consecutive file chain count to 1",
+          "passed": true,
+          "details": {
+            "previousTargetRepeatCount": 1
+          }
+        },
+        {
+          "testId": "3.5_virtual_shadow_buffer_coherence",
+          "description": "Virtual whole-file shadow buffer tracks cumulative replacements accurately across multiple calls",
+          "passed": true,
+          "details": {
+            "bufferLength": 59,
+            "hasBothReplacements": true
+          }
+        }
+      ]
+    },
+    "Workflow 4: Jev Live Governance & DX Queries": {
+      "name": "Workflow 4: Jev Live Governance & DX Queries",
+      "tests": [
+        {
+          "testId": "4.1_jev_friction_assessment",
+          "description": "Jev classifies harness friction as 'moderate_acceptable_tradeoff' (adds_noticeable_friction P=0.21)",
+          "passed": true,
+          "details": {
+            "frictionClass": "moderate_acceptable_tradeoff",
+            "addsFrictionP": 0.21,
+            "latencyMs": 1216
+          }
+        },
+        {
+          "testId": "4.2_jev_decision_clarity",
+          "description": "Jev classifies veto clarity as 'immediately_actionable' (actionable_in_one_turn P=0.84)",
+          "passed": true,
+          "details": {
+            "clarityTier": "immediately_actionable",
+            "actionableP": 0.84,
+            "latencyMs": 876
+          }
+        },
+        {
+          "testId": "4.3_jev_bipartite_failsafe_ruling",
+          "description": "Jev classifies bipartite fail-safe as 'optimal_balance' (preserves_flow P=0.84)",
+          "passed": true,
+          "details": {
+            "failSafeEval": "optimal_balance",
+            "flowPreservedP": 0.84,
+            "latencyMs": 373
+          }
+        },
+        {
+          "testId": "4.4_jev_overall_dx_scorecard",
+          "description": "Jev DX Scorecard generated: Friction='low', Clarity='moderate', Safety='robust', Approved P=0.35",
+          "passed": true,
+          "details": {
+            "devFrictionRating": "low",
+            "decisionClarityRating": "moderate",
+            "safetyRating": "robust",
+            "overallDxApprovedP": 0.35
+          }
+        }
+      ]
+    }
+  },
+  "jevGovernanceProbes": {
+    "probe4A_friction": {
+      "latencyMs": 1216,
+      "addsNoticeableFrictionProb": 0.21,
+      "frictionClassification": "moderate_acceptable_tradeoff",
+      "usage": {
+        "input_tokens": 649,
+        "output_tokens": 92
+      }
+    },
+    "probe4B_clarity": {
+      "latencyMs": 876,
+      "actionableInOneTurnProb": 0.84,
+      "clarityTier": "immediately_actionable",
+      "usage": {
+        "input_tokens": 717,
+        "output_tokens": 77
+      }
+    },
+    "probe4C_failsafe": {
+      "latencyMs": 373,
+      "preservesFlowSafelyProb": 0.84,
+      "failSafeEvaluation": "optimal_balance",
+      "usage": {
+        "input_tokens": 597,
+        "output_tokens": 80
+      }
+    }
+  },
+  "dxScorecard": {
+    "developerFrictionScore": "low",
+    "decisionClarityScore": "moderate",
+    "safetyGuaranteesScore": "robust",
+    "overallDxApprovedProb": 0.35,
+    "latencyMs": 401,
+    "usage": {
+      "input_tokens": 807,
+      "output_tokens": 175
+    }
+  },
+  "summary": {
+    "totalTests": 24,
+    "passed": 24,
+    "failed": 0,
+    "passRatePct": 100
+  }
+}

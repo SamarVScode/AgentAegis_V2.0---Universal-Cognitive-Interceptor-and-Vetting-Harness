@@ -1,0 +1,624 @@
+{
+  "interrogation_meta": {
+    "timestamp": "2026-09-20T14:35:12.625Z",
+    "model": "jev-1.13.0",
+    "api_endpoint": "https://api.typesafe.ai/v1/systemone",
+    "total_battery_topics": 6,
+    "total_probes": 12
+  },
+  "scorecard": {
+    "thesis_wins": 5,
+    "antithesis_wins": 0,
+    "synthesis_rulings": 1,
+    "avg_thesis_soundness_p": 0.54,
+    "avg_antithesis_validity_p": 0.6,
+    "avg_net_superiority_p": 0.75,
+    "total_tokens_consumed": 10729,
+    "total_latency_ms": 6415,
+    "topic_rulings": [
+      {
+        "topic_id": 1,
+        "topic": "TOKEN REDUCTION CLAIM",
+        "ruling": "thesis_prevails",
+        "p_soundness": 0.49,
+        "p_challenge_valid": 0.57,
+        "p_fatal_flaw": 0.17,
+        "p_net_superiority": 0.71,
+        "verdict_probabilities": {
+          "antithesis_prevails": 0,
+          "synthesis_mitigation_required": 0.14,
+          "thesis_prevails": 0.86
+        },
+        "latency_total_ms": 2303,
+        "tokens_total": 1793
+      },
+      {
+        "topic_id": 2,
+        "topic": "DECISION-MAKING CAPABILITY",
+        "ruling": "thesis_prevails",
+        "p_soundness": 0.28,
+        "p_challenge_valid": 0.68,
+        "p_fatal_flaw": 0.47,
+        "p_net_superiority": 0.62,
+        "verdict_probabilities": {
+          "antithesis_prevails": 0.02,
+          "thesis_prevails": 0.73,
+          "synthesis_mitigation_required": 0.25
+        },
+        "latency_total_ms": 838,
+        "tokens_total": 1803
+      },
+      {
+        "topic_id": 3,
+        "topic": "PRETOOLUSE LATENCY FRICTION",
+        "ruling": "thesis_prevails",
+        "p_soundness": 0.87,
+        "p_challenge_valid": 0.23,
+        "p_fatal_flaw": 0.39,
+        "p_net_superiority": 0.79,
+        "verdict_probabilities": {
+          "thesis_prevails": 0.74,
+          "synthesis_mitigation_required": 0.26,
+          "antithesis_prevails": 0
+        },
+        "latency_total_ms": 856,
+        "tokens_total": 1751
+      },
+      {
+        "topic_id": 4,
+        "topic": "CORE LAWS REGEX VS AST BRITTLENESS",
+        "ruling": "synthesis_mitigation_required",
+        "p_soundness": 0.57,
+        "p_challenge_valid": 0.68,
+        "p_fatal_flaw": 0.33,
+        "p_net_superiority": 0.74,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.93,
+          "thesis_prevails": 0.07,
+          "antithesis_prevails": 0
+        },
+        "latency_total_ms": 885,
+        "tokens_total": 1835
+      },
+      {
+        "topic_id": 5,
+        "topic": "PREMATURE CYCLE BREAKER ABORTS",
+        "ruling": "thesis_prevails",
+        "p_soundness": 0.49,
+        "p_challenge_valid": 0.63,
+        "p_fatal_flaw": 0.4,
+        "p_net_superiority": 0.78,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.05,
+          "antithesis_prevails": 0,
+          "thesis_prevails": 0.95
+        },
+        "latency_total_ms": 746,
+        "tokens_total": 1771
+      },
+      {
+        "topic_id": 6,
+        "topic": "ACCEPTANCE GATE SEMANTIC INTEGRITY",
+        "ruling": "thesis_prevails",
+        "p_soundness": 0.54,
+        "p_challenge_valid": 0.83,
+        "p_fatal_flaw": 0.37,
+        "p_net_superiority": 0.86,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.04,
+          "thesis_prevails": 0.95,
+          "antithesis_prevails": 0.01
+        },
+        "latency_total_ms": 787,
+        "tokens_total": 1776
+      }
+    ],
+    "avg_latency_per_probe_ms": 535
+  },
+  "battery_probes": [
+    {
+      "id": 1,
+      "topic": "TOKEN REDUCTION CLAIM",
+      "challenge": "No, the harness will not save tokens overall; it will increase LLM cost and latency due to environmental envelope overhead, redundant pre-flight checks, and extra API calls on mutations.",
+      "counter": "Aegis saves over 85% of tokens by fast-pathing 70% of reads locally at zero tokens and cutting thrashing loops at 3 repeats.",
+      "antithesis_probe": {
+        "latency_ms": 1292,
+        "tokens": {
+          "input": 691,
+          "output": 100,
+          "total": 791
+        },
+        "challenge_validity_p": 0.57,
+        "flaw_fatal_p": 0.17,
+        "critique_severity": "manageable_tradeoff",
+        "severity_confidence": 0.84,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.57
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "manageable_tradeoff",
+            "confidence": 0.84,
+            "probabilities": {
+              "manageable_tradeoff": 0.89,
+              "fatal_flaw": 0.11,
+              "negligible_overhead": 0
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.17
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 1011,
+        "tokens": {
+          "input": 900,
+          "output": 102,
+          "total": 1002
+        },
+        "counter_soundness_p": 0.49,
+        "adjudication_verdict": "thesis_prevails",
+        "verdict_confidence": 0.79,
+        "verdict_probabilities": {
+          "antithesis_prevails": 0,
+          "synthesis_mitigation_required": 0.14,
+          "thesis_prevails": 0.86
+        },
+        "net_superiority_p": 0.71,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.49
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "thesis_prevails",
+            "confidence": 0.79,
+            "probabilities": {
+              "antithesis_prevails": 0,
+              "synthesis_mitigation_required": 0.14,
+              "thesis_prevails": 0.86
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.71
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "thesis_prevails",
+        "p_soundness": 0.49,
+        "p_challenge_valid": 0.57,
+        "p_fatal_flaw": 0.17,
+        "p_net_superiority": 0.71,
+        "verdict_margin": -0.08,
+        "rationale": "Jev ruled that the architectural counter decisively prevails (P_sound=0.49 vs P_critique=0.57), backed by Layered Triage and empirical benchmarks."
+      }
+    },
+    {
+      "id": 2,
+      "topic": "DECISION-MAKING CAPABILITY",
+      "challenge": "No, the harness decision-making logic is fundamentally unreliable: local fastpaths create security blindspots for obfuscated commands, while rigid regex linters produce unacceptable false-positive rates on creative code.",
+      "counter": "The layered triage (Layer 1 zero-token fastpath -> Layer 2 AST linter -> Layer 3 cycle detector -> Layer 4 Jev cognitive authority) achieves optimal decision precision with minimal overhead.",
+      "antithesis_probe": {
+        "latency_ms": 397,
+        "tokens": {
+          "input": 704,
+          "output": 95,
+          "total": 799
+        },
+        "challenge_validity_p": 0.68,
+        "flaw_fatal_p": 0.47,
+        "critique_severity": "fatal_flaw",
+        "severity_confidence": 0.48,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.68
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "fatal_flaw",
+            "confidence": 0.48,
+            "probabilities": {
+              "invalid_critique": 0.01,
+              "manageable_tradeoff": 0.34,
+              "fatal_flaw": 0.65
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.47
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 441,
+        "tokens": {
+          "input": 902,
+          "output": 102,
+          "total": 1004
+        },
+        "counter_soundness_p": 0.28,
+        "adjudication_verdict": "thesis_prevails",
+        "verdict_confidence": 0.59,
+        "verdict_probabilities": {
+          "antithesis_prevails": 0.02,
+          "thesis_prevails": 0.73,
+          "synthesis_mitigation_required": 0.25
+        },
+        "net_superiority_p": 0.62,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.28
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "thesis_prevails",
+            "confidence": 0.59,
+            "probabilities": {
+              "antithesis_prevails": 0.02,
+              "thesis_prevails": 0.73,
+              "synthesis_mitigation_required": 0.25
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.62
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "thesis_prevails",
+        "p_soundness": 0.28,
+        "p_challenge_valid": 0.68,
+        "p_fatal_flaw": 0.47,
+        "p_net_superiority": 0.62,
+        "verdict_margin": -0.4,
+        "rationale": "Jev ruled that the architectural counter decisively prevails (P_sound=0.28 vs P_critique=0.68), backed by Layered Triage and empirical benchmarks."
+      }
+    },
+    {
+      "id": 3,
+      "topic": "PRETOOLUSE LATENCY FRICTION",
+      "challenge": "No, intercepting tools before execution introduces disruptive latency that breaks developer pair-programming flow; an asynchronous post-execution audit is strictly superior.",
+      "counter": "Pre-execution gating is non-negotiable for irreversible destructive mutations and credential leaks.",
+      "antithesis_probe": {
+        "latency_ms": 447,
+        "tokens": {
+          "input": 718,
+          "output": 91,
+          "total": 809
+        },
+        "challenge_validity_p": 0.23,
+        "flaw_fatal_p": 0.39,
+        "critique_severity": "secondary_concern",
+        "severity_confidence": 0.39,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.23
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "secondary_concern",
+            "confidence": 0.39,
+            "probabilities": {
+              "decisive_argument": 0.37,
+              "non_issue": 0.04,
+              "secondary_concern": 0.59
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.39
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 409,
+        "tokens": {
+          "input": 840,
+          "output": 102,
+          "total": 942
+        },
+        "counter_soundness_p": 0.87,
+        "adjudication_verdict": "thesis_prevails",
+        "verdict_confidence": 0.61,
+        "verdict_probabilities": {
+          "thesis_prevails": 0.74,
+          "synthesis_mitigation_required": 0.26,
+          "antithesis_prevails": 0
+        },
+        "net_superiority_p": 0.79,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.87
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "thesis_prevails",
+            "confidence": 0.61,
+            "probabilities": {
+              "thesis_prevails": 0.74,
+              "synthesis_mitigation_required": 0.26,
+              "antithesis_prevails": 0
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.79
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "thesis_prevails",
+        "p_soundness": 0.87,
+        "p_challenge_valid": 0.23,
+        "p_fatal_flaw": 0.39,
+        "p_net_superiority": 0.79,
+        "verdict_margin": 0.64,
+        "rationale": "Jev ruled that the architectural counter decisively prevails (P_sound=0.87 vs P_critique=0.23), backed by Layered Triage and empirical benchmarks."
+      }
+    },
+    {
+      "id": 4,
+      "topic": "CORE LAWS REGEX VS AST BRITTLENESS",
+      "challenge": "No, static regex linting for Google Apps Script Core Laws is trivially bypassed by variable aliasing, whitespace, and multi-line destructuring, rendering it useless.",
+      "counter": "Regex pre-flight achieves zero-token, sub-millisecond enforcement of the primary 90% of anti-patterns without heavy AST parsing overhead.",
+      "antithesis_probe": {
+        "latency_ms": 385,
+        "tokens": {
+          "input": 757,
+          "output": 107,
+          "total": 864
+        },
+        "challenge_validity_p": 0.68,
+        "flaw_fatal_p": 0.33,
+        "critique_severity": "fatal_architectural_flaw",
+        "severity_confidence": 0.59,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.68
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "fatal_architectural_flaw",
+            "confidence": 0.59,
+            "probabilities": {
+              "minor_edge_case_or_invalid": 0.02,
+              "fatal_architectural_flaw": 0.73,
+              "manageable_engineering_tradeoff": 0.25
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.33
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 500,
+        "tokens": {
+          "input": 866,
+          "output": 105,
+          "total": 971
+        },
+        "counter_soundness_p": 0.57,
+        "adjudication_verdict": "synthesis_mitigation_required",
+        "verdict_confidence": 0.89,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.93,
+          "thesis_prevails": 0.07,
+          "antithesis_prevails": 0
+        },
+        "net_superiority_p": 0.74,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.57
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "synthesis_mitigation_required",
+            "confidence": 0.89,
+            "probabilities": {
+              "synthesis_mitigation_required": 0.93,
+              "thesis_prevails": 0.07,
+              "antithesis_prevails": 0
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.74
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "synthesis_mitigation_required",
+        "p_soundness": 0.57,
+        "p_challenge_valid": 0.68,
+        "p_fatal_flaw": 0.33,
+        "p_net_superiority": 0.74,
+        "verdict_margin": -0.11,
+        "rationale": "Jev ruled that while the core thesis is sound (P_sound=0.57), the critique identifies a genuine boundary condition requiring explicit architectural parameters."
+      }
+    },
+    {
+      "id": 5,
+      "topic": "PREMATURE CYCLE BREAKER ABORTS",
+      "challenge": "No, halting edits at 3 repeats prematurely kills legitimate exploratory debugging on complex interdependent multi-file bugs.",
+      "counter": "Trivial churn (<15% variance) on failing tests indicates unproductive localized thrashing; halting saves tens of thousands of runaway tokens.",
+      "antithesis_probe": {
+        "latency_ms": 367,
+        "tokens": {
+          "input": 684,
+          "output": 109,
+          "total": 793
+        },
+        "challenge_validity_p": 0.63,
+        "flaw_fatal_p": 0.4,
+        "critique_severity": "manageable_engineering_tradeoff",
+        "severity_confidence": 0.52,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.63
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "manageable_engineering_tradeoff",
+            "confidence": 0.52,
+            "probabilities": {
+              "manageable_engineering_tradeoff": 0.68,
+              "fatal_architectural_flaw": 0.32,
+              "minor_edge_case_or_invalid": 0
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.4
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 379,
+        "tokens": {
+          "input": 876,
+          "output": 102,
+          "total": 978
+        },
+        "counter_soundness_p": 0.49,
+        "adjudication_verdict": "thesis_prevails",
+        "verdict_confidence": 0.92,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.05,
+          "antithesis_prevails": 0,
+          "thesis_prevails": 0.95
+        },
+        "net_superiority_p": 0.78,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.49
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "thesis_prevails",
+            "confidence": 0.92,
+            "probabilities": {
+              "synthesis_mitigation_required": 0.05,
+              "antithesis_prevails": 0,
+              "thesis_prevails": 0.95
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.78
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "thesis_prevails",
+        "p_soundness": 0.49,
+        "p_challenge_valid": 0.63,
+        "p_fatal_flaw": 0.4,
+        "p_net_superiority": 0.78,
+        "verdict_margin": -0.14,
+        "rationale": "Jev ruled that the architectural counter decisively prevails (P_sound=0.49 vs P_critique=0.63), backed by Layered Triage and empirical benchmarks."
+      }
+    },
+    {
+      "id": 6,
+      "topic": "ACCEPTANCE GATE SEMANTIC INTEGRITY",
+      "challenge": "No, semantic verification at P >= 0.85 can be fooled by stubbed test suites, mocked assertions, or truncated exit logs.",
+      "counter": "Dual-stage acceptance (deterministic exit code 0 + Jev semantic verification) prevents false task completions.",
+      "antithesis_probe": {
+        "latency_ms": 402,
+        "tokens": {
+          "input": 707,
+          "output": 109,
+          "total": 816
+        },
+        "challenge_validity_p": 0.83,
+        "flaw_fatal_p": 0.37,
+        "critique_severity": "manageable_engineering_tradeoff",
+        "severity_confidence": 0.48,
+        "answers": {
+          "is_challenge_valid": {
+            "type": "noul",
+            "noul": 0.83
+          },
+          "critique_severity": {
+            "type": "choice",
+            "choice": "manageable_engineering_tradeoff",
+            "confidence": 0.48,
+            "probabilities": {
+              "fatal_architectural_flaw": 0.34,
+              "manageable_engineering_tradeoff": 0.66,
+              "minor_edge_case_or_invalid": 0
+            }
+          },
+          "flaw_fatal_p": {
+            "type": "noul",
+            "noul": 0.37
+          }
+        }
+      },
+      "thesis_probe": {
+        "latency_ms": 385,
+        "tokens": {
+          "input": 858,
+          "output": 102,
+          "total": 960
+        },
+        "counter_soundness_p": 0.54,
+        "adjudication_verdict": "thesis_prevails",
+        "verdict_confidence": 0.93,
+        "verdict_probabilities": {
+          "synthesis_mitigation_required": 0.04,
+          "thesis_prevails": 0.95,
+          "antithesis_prevails": 0.01
+        },
+        "net_superiority_p": 0.86,
+        "answers": {
+          "is_counter_sound": {
+            "type": "noul",
+            "noul": 0.54
+          },
+          "adjudication_verdict": {
+            "type": "choice",
+            "choice": "thesis_prevails",
+            "confidence": 0.93,
+            "probabilities": {
+              "synthesis_mitigation_required": 0.04,
+              "thesis_prevails": 0.95,
+              "antithesis_prevails": 0.01
+            }
+          },
+          "net_architectural_superiority": {
+            "type": "noul",
+            "noul": 0.86
+          }
+        }
+      },
+      "mathematical_ruling": {
+        "verdict": "thesis_prevails",
+        "p_soundness": 0.54,
+        "p_challenge_valid": 0.83,
+        "p_fatal_flaw": 0.37,
+        "p_net_superiority": 0.86,
+        "verdict_margin": -0.29,
+        "rationale": "Jev ruled that the architectural counter decisively prevails (P_sound=0.54 vs P_critique=0.83), backed by Layered Triage and empirical benchmarks."
+      }
+    }
+  ]
+}

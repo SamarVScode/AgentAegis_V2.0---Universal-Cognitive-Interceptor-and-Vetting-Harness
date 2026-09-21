@@ -1,0 +1,78 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "token_saving_boolean": {
+      "type": "noul",
+      "noul": 0.75
+    },
+    "token_saving_comparison": {
+      "type": "choice",
+      "choice": "substantial_savings",
+      "confidence": 0.93,
+      "probabilities": {
+        "wasteful": 0.03,
+        "substantial_savings": 0.96,
+        "neutral_consumption": 0.01
+      }
+    },
+    "code_quality_boolean": {
+      "type": "noul",
+      "noul": 0.7
+    },
+    "code_quality_comparison": {
+      "type": "choice",
+      "choice": "superior_quality",
+      "confidence": 0.97,
+      "probabilities": {
+        "inferior_quality": 0.02,
+        "equivalent_quality": 0,
+        "superior_quality": 0.98
+      }
+    },
+    "is_harness_worth_using_boolean": {
+      "type": "noul",
+      "noul": 0.54
+    },
+    "practical_recommendation": {
+      "type": "choice",
+      "choice": "strongly_recommended",
+      "confidence": 0.9,
+      "probabilities": {
+        "situational_only": 0.01,
+        "strongly_recommended": 0.93,
+        "not_recommended": 0.06
+      }
+    },
+    "production_readiness_score": {
+      "type": "score",
+      "score": 1.87,
+      "confidence": 0.04,
+      "legend": {
+        "0": "0: Unusable or severely flawed with architectural bugs",
+        "1": "1: Fragile with notable gaps in error resilience or edge-case handling",
+        "2": "2: Production-Ready with solid architecture and verified test pass",
+        "3": "3: Exceptional enterprise-grade readiness with robust fastpaths, zero external runtime dependencies, full symlink and buffer hardening, and verified dual-stage gates"
+      },
+      "probabilities": {
+        "0": 0.04,
+        "1": 0.42,
+        "2": 0.17,
+        "3": 0.37
+      }
+    },
+    "production_readiness_choice": {
+      "type": "choice",
+      "choice": "needs_more_work",
+      "confidence": 0.6,
+      "probabilities": {
+        "production_ready_standard": 0.21,
+        "needs_more_work": 0.73,
+        "production_ready_exceptional": 0.06
+      }
+    }
+  },
+  "usage": {
+    "input_tokens": 33417,
+    "output_tokens": 291
+  }
+}

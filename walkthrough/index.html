@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AgentAegis — Cognitive Interceptor &amp; Vetting Harness for Autonomous Coding Agents</title>
+  <meta name="description" content="Official interactive product walkthrough for AgentAegis. High-prestige cognitive interceptor, anti-compounding throttle, and Jev System 1 adjudication for autonomous coding agents.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="top-header">
+    <div class="header-container">
+      <div class="brand">
+        <span class="brand-badge">HARNESS</span>
+        <span class="brand-title">AgentAegis</span>
+        <span class="brand-version">v2.0.0</span>
+      </div>
+      <nav class="nav-links">
+        <a href="#metrics" class="nav-link">Metrics</a>
+        <a href="#architecture" class="nav-link">Architecture</a>
+        <a href="#benchmark" class="nav-link">3-Way Benchmark</a>
+        <a href="#physics" class="nav-link">Token Physics</a>
+        <a href="#terminal" class="nav-link">CLI Sandbox</a>
+        <a href="#quickstart" class="nav-link">Quickstart</a>
+      </nav>
+      <div class="header-status">
+        <span class="status-indicator"></span>
+        <span class="status-label">FAIL-CLOSED ACTIVE</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Hero Section -->
+  <section class="hero-section">
+    <div class="hero-container">
+      <div class="hero-eyebrow">
+        <span class="eyebrow-chip">ENTERPRISE AGENT GOVERNANCE</span>
+        <span class="eyebrow-divider">/</span>
+        <span class="eyebrow-sub">JEV SYSTEM 1 CALIBRATED</span>
+      </div>
+      <h1 class="hero-heading">AgentAegis — The Universal Cognitive Interceptor &amp; Vetting Harness for Autonomous Coding Agents</h1>
+      <p class="hero-lead">
+        Deterministic lifecycle interception, quadratic loop breaker, and Jev System 1 adjudication.
+        Eliminates context-compounding token blowups, prevents destructive execution, and guarantees zero AI slop across Claude Code, Cursor, and Google Antigravity.
+      </p>
+
+      <div class="hero-cta-group">
+        <a href="#benchmark" class="btn btn-primary">Explore Benchmark Arena</a>
+        <a href="#terminal" class="btn btn-secondary">Launch CLI Sandbox</a>
+        <div class="hero-quick-command">
+          <code>npx aegis --all</code>
+          <button class="btn-copy" data-copy="npx aegis --all" title="Copy install command">COPY</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Metrics Strip -->
+  <section id="metrics" class="metrics-strip-section">
+    <div class="section-container">
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">WIRE TOKEN REDUCTION</span>
+            <span class="metric-indicator positive">BOUNDED</span>
+          </div>
+          <div class="metric-value">90.5% - 96.6%</div>
+          <div class="metric-desc">Wire tokens compressed from 6.60M down to 220k through subagent sandboxing.</div>
+          <div class="metric-footer">Baseline: 2.32M | Aegis V1: 6.60M | Aegis V2: 220k</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-card-highlight"></div>
+          <div class="metric-header">
+            <span class="metric-tag">PRESTIGE SCORE</span>
+            <span class="metric-indicator verified">ADJUDICATED</span>
+          </div>
+          <div class="metric-value">2.88 / 3.00</div>
+          <div class="metric-desc">Jev System 1 adjudicated: Exceptional Staff/Executive caliber code quality.</div>
+          <div class="metric-footer">Definitive winner at 99% Bayesian confidence</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">AUTOMATED TEST GATES</span>
+            <span class="metric-indicator passed">DETERMINISTIC</span>
+          </div>
+          <div class="metric-value">11 / 11</div>
+          <div class="metric-desc">Zero false-positive completion gates. Agent cannot declare victory without green runs.</div>
+          <div class="metric-footer">Runner Parser: Node.js, Vitest, Jest, Cargo</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">CIRCUIT BREAKER</span>
+            <span class="metric-indicator secure">PROTECTED</span>
+          </div>
+          <div class="metric-value">Zero-Thrashing</div>
+          <div class="metric-desc">Cycle detector with virtual shadow buffer halts repetitive loop thrashing at turn 3.</div>
+          <div class="metric-footer">Diff variance tracking + SHA-256 state matching</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Architecture Lifecycle -->
+  <section id="architecture" class="architecture-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">DETERMINISTIC PIPELINE</span>
+        <h2 class="section-title">4-Stage Cognitive Interceptor Lifecycle</h2>
+        <p class="section-subtitle">
+          How AgentAegis wraps autonomous agent execution loops with strict safety barriers and token compression.
+        </p>
+      </div>
+
+      <div class="stage-stepper" id="arch-stepper">
+        <button class="stage-step active" data-stage="1">
+          <span class="step-num">STAGE 01</span>
+          <span class="step-title">PreTool Hook Interception</span>
+          <span class="step-badge">Low Latency &lt;1.2ms</span>
+        </button>
+        <button class="stage-step" data-stage="2">
+          <span class="step-num">STAGE 02</span>
+          <span class="step-title">Cycle Detector &amp; Diff Variance</span>
+          <span class="step-badge">Virtual Shadow Buffer</span>
+        </button>
+        <button class="stage-step" data-stage="3">
+          <span class="step-num">STAGE 03</span>
+          <span class="step-title">Ground Truth State Collector</span>
+          <span class="step-badge">Zero-Token Diff Filter</span>
+        </button>
+        <button class="stage-step" data-stage="4">
+          <span class="step-num">STAGE 04</span>
+          <span class="step-title">Jev Acceptance Gate</span>
+          <span class="step-badge">P=0.99 Adjudication</span>
+        </button>
+      </div>
+
+      <div class="stage-display" id="stage-display">
+        <div class="stage-details">
+          <div class="stage-meta">
+            <span class="stage-tag" id="stage-tag">HOOK: preToolUse / pre-tool</span>
+            <span class="stage-status" id="stage-status">[ACTIVE: BLOCKING MODE]</span>
+          </div>
+          <h3 class="stage-name" id="stage-name">Stage 1: PreTool Hook Interception</h3>
+          <p class="stage-description" id="stage-description">
+            Intercepts every tool call before disk mutation or shell execution occurs.
+            Evaluates arguments against destructive action filters, directory traversal rules, and secret token guards.
+            Instantly issues Exit Code 2 with a safety veto on destructive shell operations like raw deletion or storage resets.
+          </p>
+          <div class="stage-features" id="stage-features">
+            <div class="feature-item">
+              <span class="feature-key">Execution Speed</span>
+              <span class="feature-val">Under 1.2ms (Zero network overhead)</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-key">Core Laws Linter</span>
+              <span class="feature-val">Zero-token AST scan for banned slop patterns</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-key">Destructive Veto</span>
+              <span class="feature-val">Instant SIGTERM / Exit Code 2 on destructive commands</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="stage-terminal-preview">
+          <div class="preview-header">
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="terminal-dot"></span>
+            <span class="preview-title" id="preview-title">harness/interceptor.js [preToolUse]</span>
+          </div>
+          <pre class="preview-code" id="preview-code"><code>// Intercept incoming tool invocation
+const isDestructive = isDestructiveAction(toolName, toolArgs);
+if (isDestructive) {
+  process.stderr.write("[JEV SAFETY VETO]: Destructive command pattern blocked.\n");
+  process.exit(2);
+}
+
+// Zero-token 4 Core Laws validation
+const violations = lintCoreLaws(toolArgs.CodeContent || "");
+if (violations.length > 0) {
+  process.stderr.write(`[CORE LAWS VETO]: ${violations.join(", ")}\n`);
+  process.exit(1);
+}</code></pre>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive 3-Way Benchmark Arena -->
+  <section id="benchmark" class="benchmark-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">HEAD-TO-HEAD RIGOROUS EVALUATION</span>
+        <h2 class="section-title">Interactive 3-Way Benchmark Arena</h2>
+        <p class="section-subtitle">
+          Real-world experimental telemetry evaluated on identical prompt: "Build high-prestige executive portfolio without AI slop or emoji".
+          Simultaneous Bayesian adjudication conducted by Jev System 1.
+        </p>
+      </div>
+
+      <!-- Tab Switcher -->
+      <div class="benchmark-tabs">
+        <button class="bench-tab" data-bench="without">
+          <span class="tab-label">Implementation A</span>
+          <span class="tab-name">Without Harness</span>
+          <span class="tab-pill danger">Flawed (0.97)</span>
+        </button>
+        <button class="bench-tab" data-bench="v1">
+          <span class="tab-label">Implementation B</span>
+          <span class="tab-name">Aegis V1 (Unconstrained)</span>
+          <span class="tab-pill warning">6.6M Tokens (2.86)</span>
+        </button>
+        <button class="bench-tab active" data-bench="v2">
+          <span class="tab-label">Implementation C</span>
+          <span class="tab-name">AgentAegis V2 (Sandboxed)</span>
+          <span class="tab-pill winner">Definitive Winner (2.88)</span>
+        </button>
+      </div>
+
+      <!-- Live Bench Card -->
+      <div class="bench-card-container">
+        <div class="bench-card" id="bench-card">
+          <div class="bench-card-main">
+            <div class="bench-identity">
+              <span class="bench-version-tag" id="bench-version-tag">IMPLEMENTATION C - AGENTAEGIS V2</span>
+              <h3 class="bench-title" id="bench-title">Sandboxed Research + Anti-Compounding Supervisor Throttle</h3>
+              <p class="bench-summary" id="bench-summary">
+                Subagent task delegations run in bounded isolated contexts. Supervisor monitors state via deterministic test runners and diff snapshots.
+                Zero thrashing loops, zero token compounding, and 100% test gate passing.
+              </p>
+            </div>
+
+            <div class="bench-stats-grid">
+              <div class="bench-stat-box">
+                <span class="stat-box-label">TOTAL WIRE TOKENS</span>
+                <span class="stat-box-value accent-emerald" id="bench-tokens">220,000</span>
+                <span class="stat-box-note" id="bench-token-note">96.6% less than V1 | 90.5% less than Baseline</span>
+              </div>
+              <div class="bench-stat-box">
+                <span class="stat-box-label">SUPERVISOR TURNS</span>
+                <span class="stat-box-value" id="bench-turns">4</span>
+                <span class="stat-box-note" id="bench-turns-note">Bounded linear turns (anti-thrashing)</span>
+              </div>
+              <div class="bench-stat-box">
+                <span class="stat-box-label">PRESTIGE SCORE</span>
+                <span class="stat-box-value accent-blue" id="bench-score">2.88 / 3.00</span>
+                <span class="stat-box-note" id="bench-score-note">Exceptional Staff/Lead engineering caliber</span>
+              </div>
+              <div class="bench-stat-box">
+                <span class="stat-box-label">AUTOMATED TESTS</span>
+                <span class="stat-box-value" id="bench-tests">11 / 11 Passed</span>
+                <span class="stat-box-note" id="bench-tests-note">Verified runner parser execution</span>
+              </div>
+            </div>
+
+            <div class="bench-details-row">
+              <div class="detail-block">
+                <span class="detail-label">Candidate Output Authenticity</span>
+                <div class="detail-val" id="bench-authenticity">Logistics Systems Architect &amp; Operations Engineering Lead (100% Accurate)</div>
+              </div>
+              <div class="detail-block">
+                <span class="detail-label">AI Slop &amp; Emoji Violations</span>
+                <div class="detail-val" id="bench-emojis">0 Emojis | 0 Hallucinations | Clean Technical Metrics</div>
+              </div>
+              <div class="detail-block">
+                <span class="detail-label">Jev Bayesian Adjudication</span>
+                <div class="detail-val" id="bench-winner">Definitive Overall Winner (Probability = 1.00)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="bench-comparison-table-wrapper">
+            <table class="bench-comparison-table">
+              <thead>
+                <tr>
+                  <th>Architecture Dimension</th>
+                  <th>Without Harness</th>
+                  <th>Aegis V1 (Unconstrained)</th>
+                  <th>AgentAegis V2 (Sandboxed)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td>Wire Tokens Burned</td>
+                  <td class="text-danger">2,320,000</td>
+                  <td class="text-warning">6,600,000 (Explosion)</td>
+                  <td class="text-winner font-bold">220,000 (-96.6%)</td>
+                </tr>
+                <tr>
+                  <td>Supervisor Turns</td>
+                  <td>22 turns</td>
+                  <td class="text-warning">73 turns (Compounding loop)</td>
+                  <td class="text-winner font-bold">4 turns (Bounded)</td>
+                </tr>
+                <tr>
+                  <td>Jev Prestige Score</td>
+                  <td class="text-danger">0.97 / 3.00 (Flawed)</td>
+                  <td>2.86 / 3.00</td>
+                  <td class="text-winner font-bold">2.88 / 3.00</td>
+                </tr>
+                <tr>
+                  <td>Automated Test Gate</td>
+                  <td class="text-danger">0 tests (Fictitious claims)</td>
+                  <td>5 unit tests</td>
+                  <td class="text-winner font-bold">11/11 automated tests</td>
+                </tr>
+                <tr>
+                  <td>Emoji / Slop Violations</td>
+                  <td class="text-danger">8 emojis detected</td>
+                  <td class="text-winner">0 emojis</td>
+                  <td class="text-winner font-bold">0 emojis (Core Laws enforced)</td>
+                </tr>
+                <tr>
+                  <td>Execution Model</td>
+                  <td>Raw unconstrained</td>
+                  <td>Continuous supervisor polling</td>
+                  <td class="text-winner font-bold">Subagent Sandboxing + Throttle</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Token Physics Calculator -->
+  <section id="physics" class="physics-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">QUADRATIC VS BOUNDED LINEAR DYNAMICS</span>
+        <h2 class="section-title">Token Physics Calculator: Context Compounding Simulator</h2>
+        <p class="section-subtitle">
+          Autonomous agents re-send conversation history every turn. Calculate the quadratic token explosion of unconstrained supervisors vs AgentAegis bounded subagents.
+        </p>
+      </div>
+
+      <div class="physics-card">
+        <div class="physics-controls">
+          <div class="slider-group">
+            <div class="slider-header">
+              <label for="turn-slider" class="slider-label">Supervisor Turns In Mission:</label>
+              <span class="slider-value" id="slider-turn-display">40 Turns</span>
+            </div>
+            <input type="range" id="turn-slider" min="5" max="80" value="40" step="1" class="slider-input">
+            <div class="slider-ticks">
+              <span>5 Turns</span>
+              <span>20 Turns</span>
+              <span>40 Turns</span>
+              <span>60 Turns</span>
+              <span>80 Turns</span>
+            </div>
+          </div>
+
+          <div class="physics-formulas">
+            <div class="formula-card">
+              <span class="formula-tag danger">QUADRATIC COMPOUNDING (UNCONSTRAINED)</span>
+              <code>Tokens(N) = N * Base + 0.5 * k * N^2 * Payload</code>
+              <p class="formula-desc">Every turn resends full chat logs, tool payloads, and stdout buffers back over the wire.</p>
+            </div>
+            <div class="formula-card">
+              <span class="formula-tag emerald">BOUNDED LINEAR SCALING (AGENTAEGIS V2)</span>
+              <code>Tokens(N) = N_sup * S_base + Subagents * Sandbox_cap</code>
+              <p class="formula-desc">Supervisor turns capped to atomic state checks; work delegated to bounded subagent tasks.</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="physics-results-grid">
+          <div class="calc-result-box unconstrained">
+            <span class="result-box-title">Unconstrained Agent Wire Tokens</span>
+            <div class="result-box-value" id="calc-unconstrained-tokens">2,880,000</div>
+            <div class="result-box-cost" id="calc-unconstrained-cost">Estimated API Cost: $8.64 USD</div>
+            <div class="compounding-bar-wrapper">
+              <div class="compounding-bar danger" id="bar-unconstrained" style="width: 82%;"></div>
+            </div>
+          </div>
+
+          <div class="calc-result-box bounded">
+            <span class="result-box-title">AgentAegis V2 Bounded Wire Tokens</span>
+            <div class="result-box-value" id="calc-aegis-tokens">196,000</div>
+            <div class="result-box-cost" id="calc-aegis-cost">Estimated API Cost: $0.59 USD</div>
+            <div class="compounding-bar-wrapper">
+              <div class="compounding-bar winner" id="bar-aegis" style="width: 8%;"></div>
+            </div>
+          </div>
+
+          <div class="calc-result-summary">
+            <div class="summary-metric">
+              <span class="summary-label">SAVINGS RATIO</span>
+              <span class="summary-val accent-emerald" id="calc-savings-percent">93.2%</span>
+            </div>
+            <div class="summary-metric">
+              <span class="summary-label">TOKENS SAVED</span>
+              <span class="summary-val" id="calc-tokens-saved">2,684,000</span>
+            </div>
+            <div class="summary-metric">
+              <span class="summary-label">FINANCIAL CONSERVATION</span>
+              <span class="summary-val accent-blue" id="calc-dollars-saved">$8.05 Saved</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Interactive Terminal Simulation -->
+  <section id="terminal" class="terminal-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">LIVE EXECUTION SIMULATOR</span>
+        <h2 class="section-title">Terminal Command Sandbox Simulation</h2>
+        <p class="section-subtitle">
+          Experience Aegis runtime interception in real-time. Test destructive command veto, cycle detection, and acceptance gates.
+        </p>
+      </div>
+
+      <div class="terminal-demo-wrapper">
+        <div class="terminal-action-toolbar">
+          <span class="toolbar-label">RUN PRESET ACTIONS:</span>
+          <button class="term-btn active" data-cmd="aegis install">aegis install</button>
+          <button class="term-btn" data-cmd="test:veto">test:veto (rm -rf /)</button>
+          <button class="term-btn" data-cmd="test:cycle">test:cycle (Thrashing breaker)</button>
+          <button class="term-btn" data-cmd="test:gate">test:gate (Acceptance check)</button>
+          <button class="term-btn clear-btn" id="term-clear-btn">Clear Output</button>
+        </div>
+
+        <div class="terminal-chrome">
+          <div class="terminal-topbar">
+            <div class="terminal-buttons">
+              <span class="t-dot close"></span>
+              <span class="t-dot minimize"></span>
+              <span class="t-dot zoom"></span>
+            </div>
+            <span class="terminal-window-title">AgentAegis Runtime Interceptor — /workspace/harness</span>
+            <span class="terminal-engine-badge" id="terminal-engine-badge">ENGINE: CLAUDE / CURSOR / ANTIGRAVITY</span>
+          </div>
+
+          <div class="terminal-body" id="terminal-body">
+            <div class="terminal-line"><span class="line-time">[09:00:01]</span> <span class="term-blue">aegis</span> system initialized. Ready for lifecycle interception.</div>
+            <div class="terminal-line"><span class="line-time">[09:00:01]</span> Type a command below or click any preset button above to execute simulation.</div>
+            <div class="terminal-line"><span class="line-prompt">$</span> <span class="term-cmd">aegis install --all</span></div>
+            <div class="terminal-line term-emerald">[AEGIS INSTALL]: Detecting agent environments in workspace...</div>
+            <div class="terminal-line term-emerald">[CLAUDE CODE]: Hook registered in .claude/settings.json (preToolUse, postToolUse)</div>
+            <div class="terminal-line term-emerald">[CURSOR]: Hook registered in .cursor/hooks.json (preToolUse, postToolUse)</div>
+            <div class="terminal-line term-emerald">[ANTIGRAVITY]: Hook registered in .antigravity/hooks.json</div>
+            <div class="terminal-line term-cyan">[READY]: Universal cognitive interceptor armed. Fail-closed security active.</div>
+          </div>
+
+          <div class="terminal-input-bar">
+            <span class="terminal-input-prompt">&gt;</span>
+            <input type="text" id="terminal-input" class="terminal-input-field" placeholder="Type 'test:veto', 'test:cycle', 'test:gate', or 'help' and press Enter..." autocomplete="off" spellcheck="false">
+            <button class="terminal-submit-btn" id="terminal-submit-btn">EXECUTE</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Multi-Engine Quickstart Section -->
+  <section id="quickstart" class="quickstart-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">ZERO-CONFIG DEPLOYMENT</span>
+        <h2 class="section-title">Multi-Engine Quickstart Installation</h2>
+        <p class="section-subtitle">
+          Arm your autonomous agents in under 10 seconds. Works out-of-the-box across leading IDEs and agent runtimes.
+        </p>
+      </div>
+
+      <!-- Universal CLI Banner -->
+      <div class="universal-install-card">
+        <div class="install-card-left">
+          <span class="install-badge">ONE COMMAND INSTALLATION</span>
+          <h3 class="install-card-title">Universal Setup for All Environments</h3>
+          <p class="install-card-desc">Automatically inspects workspace root, detects active engines, and provisions interceptor scripts.</p>
+        </div>
+        <div class="install-code-box">
+          <pre><code>npx @samarvscode/aegis --all</code></pre>
+          <button class="btn-copy" data-copy="npx @samarvscode/aegis --all">COPY COMMAND</button>
+        </div>
+      </div>
+
+      <!-- Engine Selector Tabs -->
+      <div class="engine-tabs-wrapper">
+        <div class="engine-tabs">
+          <button class="engine-tab active" data-engine="claude">Claude Code</button>
+          <button class="engine-tab" data-engine="cursor">Cursor IDE</button>
+          <button class="engine-tab" data-engine="antigravity">Google Antigravity</button>
+        </div>
+
+        <div class="engine-content" id="engine-content">
+          <!-- Claude Code Tab -->
+          <div class="engine-panel active" id="panel-claude">
+            <div class="panel-header">
+              <span class="panel-config-path">Configuration file: .claude/settings.json</span>
+              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "npx @samarvscode/aegis preToolUse --engine claude", "postToolUse": "npx @samarvscode/aegis postToolUse --engine claude" } }'>COPY JSON</button>
+            </div>
+            <pre class="panel-code"><code>{
+  "hooks": {
+    "preToolUse": "npx @samarvscode/aegis preToolUse --engine claude",
+    "postToolUse": "npx @samarvscode/aegis postToolUse --engine claude"
+  }
+}</code></pre>
+            <div class="panel-notes">
+              <span class="note-item"><span class="note-bullet">[OK]</span> Intercepts tool calls prior to execution</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Transmits telemetry through Claude Hook Protocol stdin/stdout</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Preserves Claude context window bounds</span>
+            </div>
+          </div>
+
+          <!-- Cursor IDE Tab -->
+          <div class="engine-panel" id="panel-cursor">
+            <div class="panel-header">
+              <span class="panel-config-path">Configuration file: .cursor/hooks.json</span>
+              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "node ./harness/interceptor.js preToolUse --engine cursor", "postToolUse": "node ./harness/interceptor.js postToolUse --engine cursor" } }'>COPY JSON</button>
+            </div>
+            <pre class="panel-code"><code>{
+  "hooks": {
+    "preToolUse": "node ./harness/interceptor.js preToolUse --engine cursor",
+    "postToolUse": "node ./harness/interceptor.js postToolUse --engine cursor"
+  }
+}</code></pre>
+            <div class="panel-notes">
+              <span class="note-item"><span class="note-bullet">[OK]</span> Traps Cursor background command executions</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Reconstructs virtual shadow buffer on file modifications</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Halts recursive retry loops</span>
+            </div>
+          </div>
+
+          <!-- Google Antigravity Tab -->
+          <div class="engine-panel" id="panel-antigravity">
+            <div class="panel-header">
+              <span class="panel-config-path">Configuration file: .antigravity/hooks.json</span>
+              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "node ./harness/interceptor.js preToolUse --engine antigravity", "verifyGate": "node ./harness/interceptor.js verify-gate --engine antigravity" } }'>COPY JSON</button>
+            </div>
+            <pre class="panel-code"><code>{
+  "hooks": {
+    "preToolUse": "node ./harness/interceptor.js preToolUse --engine antigravity",
+    "verifyGate": "node ./harness/interceptor.js verify-gate --engine antigravity"
+  }
+}</code></pre>
+            <div class="panel-notes">
+              <span class="note-item"><span class="note-bullet">[OK]</span> Native subagent task sandboxing coordination</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> State collector gathers verified runner artifacts before gate release</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Prevents premature completion without passing tests</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Technical Integrity & Verification Strip -->
+  <section class="integrity-section">
+    <div class="section-container">
+      <div class="integrity-card">
+        <div class="integrity-header">
+          <span class="integrity-badge">MATHEMATICAL RIGOR</span>
+          <h3 class="integrity-title">Adjudicated by Jev System 1 (v1.13.0)</h3>
+        </div>
+        <p class="integrity-text">
+          AgentAegis was subjected to rigorous empirical evaluation across 3 distinct implementation methodologies.
+          Using Bayesian probability scoring, Jev concluded Implementation C (AgentAegis V2) as the definitive winner with 0.99 posterior probability,
+          combining 2.88 / 3.00 prestige rating with a 90.5% - 96.6% wire token reduction.
+        </p>
+        <div class="integrity-stats">
+          <div class="int-stat">
+            <span class="int-num">0.99</span>
+            <span class="int-label">Bayesian Probability</span>
+          </div>
+          <div class="int-stat">
+            <span class="int-num">0 Emojis</span>
+            <span class="int-label">Strict Slop Prohibition</span>
+          </div>
+          <div class="int-stat">
+            <span class="int-num">&lt; 1.2ms</span>
+            <span class="int-label">Interceptor Overhead</span>
+          </div>
+          <div class="int-stat">
+            <span class="int-num">100%</span>
+            <span class="int-label">Deterministic Gates</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer class="site-footer">
+    <div class="section-container footer-container">
+      <div class="footer-left">
+        <div class="brand">
+          <span class="brand-badge">HARNESS</span>
+          <span class="brand-title">AgentAegis</span>
+        </div>
+        <p class="footer-desc">
+          Universal Cognitive Interceptor and Vetting Harness for Autonomous Coding Agents.
+          Zero AI slop, zero emojis, deterministic execution.
+        </p>
+      </div>
+
+      <div class="footer-meta">
+        <div class="meta-row">
+          <span class="meta-label">Protocol:</span>
+          <span class="meta-val">Aegis Interceptor v2.0.0</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Adjudication:</span>
+          <span class="meta-val">Jev System 1 (Model: jev-1.13.0)</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Security:</span>
+          <span class="meta-val">Fail-Closed Fastpath Guard</span>
+        </div>
+        <div class="meta-row">
+          <span class="meta-label">Integrity:</span>
+          <span class="meta-val">100% Verified Clean Code</span>
+        </div>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <div class="section-container footer-bottom-container">
+        <span>AgentAegis Systems Architecture. All rights reserved.</span>
+        <span>Built for High-Prestige Autonomous Engineering.</span>
+      </div>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,66 @@
+{
+  "timestamp": "2026-09-20T15:30:27.799Z",
+  "model": "jev-1.13.0",
+  "elapsed_ms": 1059,
+  "usage": {
+    "input_tokens": 1295,
+    "output_tokens": 196
+  },
+  "deep_dive_state": {
+    "initial_verdict_summary": {
+      "standalone_layer_verdict": "Rejected as standalone layer (P=0.49, Rubric=1.41)",
+      "preferred_architecture": "integrate_into_acceptance_gate (P=0.66) using two_tier_telemetry_linter (P=0.95, hybrid approval P=0.82)",
+      "policy": "calibrated_advisory_bipartite (P=0.59) + deterministic_telemetry_veto (P=0.39)"
+    },
+    "proposed_integrated_implementation": {
+      "location": "Layer 4 Acceptance Gate (harness/acceptance-gate.js) preExit hook",
+      "stage_1_zero_token": "Deterministic Regex & State Linter: Diff agent handoff claims against actual process telemetry: 1) Did agent claim tests pass when exitCode != 0 or 0 tests executed? 2) Did agent claim files were created/modified that do not exist in git diff or working directory? 3) Did agent claim command succeeded when unhandled stderr was logged?",
+      "stage_2_calibrated_jev": "If deterministic checks pass, invoke Jev System One with state envelope (handoff text, exit code, test summary, git status) to score consistency. If consistency < 0.30 on core facts, issue hard veto. If 0.30 to 0.75, issue advisory warning to agent context."
+    }
+  },
+  "answers": {
+    "integrated_acceptance_utility": {
+      "type": "score",
+      "score": 2.03,
+      "confidence": 0.94,
+      "legend": {
+        "0": "Level 0: Superfluous or redundant with existing test runner checks.",
+        "1": "Level 1: Minor improvement; catches occasional blatant lies about test runs.",
+        "2": "Level 2: Substantial architectural improvement; bridges physical telemetry with cognitive handoff integrity, eliminating deceptive exits with zero extra token cost for compliant runs.",
+        "3": "Level 3: Essential production requirement; indispensable for hardened autonomous operation."
+      },
+      "probabilities": {
+        "0": 0,
+        "1": 0.01,
+        "2": 0.95,
+        "3": 0.04
+      }
+    },
+    "veto_trigger_boundary": {
+      "type": "choice",
+      "choice": "blatant_test_or_artifact_fabrication",
+      "confidence": 0.96,
+      "probabilities": {
+        "semantic_underdelivery_score": 0.03,
+        "never_veto_on_text": 0,
+        "blatant_test_or_artifact_fabrication": 0.97,
+        "all_discrepancies_vetoed": 0
+      }
+    },
+    "advisory_feedback_mechanism": {
+      "type": "choice",
+      "choice": "inject_corrective_critique",
+      "confidence": 0.95,
+      "probabilities": {
+        "silent_user_annotation": 0.04,
+        "inject_corrective_critique": 0.96,
+        "silent_ignore": 0,
+        "force_retry_loop": 0
+      }
+    },
+    "token_overhead_minimization": {
+      "type": "noul",
+      "noul": 0.43
+    }
+  }
+}

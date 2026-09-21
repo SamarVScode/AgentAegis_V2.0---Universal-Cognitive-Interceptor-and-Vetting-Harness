@@ -1,0 +1,31 @@
+{
+  "model": "jev-1.13.0",
+  "answers": {
+    "state_collector_diagnosis": {
+      "type": "choice",
+      "choice": "recommended",
+      "confidence": 0.98,
+      "probabilities": {
+        "unnecessary": 0.01,
+        "recommended": 0.99
+      }
+    },
+    "manifest_sniffer_diagnosis": {
+      "type": "choice",
+      "choice": "recommended",
+      "confidence": 0.95,
+      "probabilities": {
+        "unnecessary": 0.03,
+        "recommended": 0.97
+      }
+    },
+    "overall_diagnosis_approval": {
+      "type": "noul",
+      "noul": 0.79
+    }
+  },
+  "usage": {
+    "input_tokens": 32593,
+    "output_tokens": 97
+  }
+}

@@ -1,0 +1,7 @@
+node_modules/
+.env
+.jev/
+*.tgz
+*.bak.*
+.DS_Store
+
