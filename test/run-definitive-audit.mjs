@@ -195,8 +195,8 @@ If .clasp.json exists, read its 'rootDir' setting if available. Only return true
     // Jest / Vitest: "Tests: 12 passed, 12 total"
     const jestMatch = combined.match(/Tests:\\s+(\\d+)\\s+passed,\\s+(\\d+)\\s+total/i);
     ...
-    // node:test: "ℹ pass 12\\nℹ fail 0"
-    const nodeTestMatch = combined.match(/ℹ?\\s*pass\\s+(\\d+)\\s+ℹ?\\s*fail\\s+(\\d+)/i);
+    // node:test: "[INFO] pass 12\\n[INFO] fail 0"
+    const nodeTestMatch = combined.match(/[INFO]?\\s*pass\\s+(\\d+)\\s+[INFO]?\\s*fail\\s+(\\d+)/i);
     ...
 }
 // Generic fallback if no specific framework matched but exit code is 0
@@ -415,7 +415,7 @@ const rawStr = String(raw || '');
 if (rawStr.trim().length > 0) {
   // Check if raw unparsed payload contains destructive patterns
   if (isDestructiveAction('raw_payload', { command: rawStr })) {
-    console.error('⚠️ [JEV SECURITY BLOCK]: Malformed tool call payload contains destructive patterns. Hard fail-closed enforced.');
+    console.error('[WARN]️ [JEV SECURITY BLOCK]: Malformed tool call payload contains destructive patterns. Hard fail-closed enforced.');
     process.exit(2);
   }
 }`
@@ -532,7 +532,7 @@ async function adjudicateWithJev(candidate) {
 
 async function runHolisticAudit() {
   console.log(`\n======================================================`);
-  console.log(`🚀 Starting Definitive Jev Governance Audit across 11 Modules`);
+  console.log(`[LAUNCH] Starting Definitive Jev Governance Audit across 11 Modules`);
   console.log(`Model: jev-1.13.0 via TypeSafe AI System One`);
   console.log(`Candidate Issues to Adjudicate: ${CANDIDATES.length}`);
   console.log(`======================================================\n`);
@@ -588,7 +588,7 @@ async function runHolisticAudit() {
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(finalArtifact, null, 2), 'utf8');
   console.log(`\n======================================================`);
-  console.log(`✅ Audit Completed Successfully!`);
+  console.log(`[PASS] Audit Completed Successfully!`);
   console.log(`Artifact saved to: ${OUTPUT_FILE}`);
   console.log(`Confirmed Issues: ${confirmedIssues.length} / ${CANDIDATES.length}`);
   console.log(`Non-Issues / Intended Design: ${nonIssues.length} / ${CANDIDATES.length}`);

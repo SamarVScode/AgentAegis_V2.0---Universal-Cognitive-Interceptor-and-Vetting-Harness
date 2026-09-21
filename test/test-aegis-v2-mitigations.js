@@ -102,10 +102,10 @@ async function runV2MitigationTests() {
     const pragmaReport = lintCoreLaws(pragmaGasCode, 'gas/Migration.gs');
     assert(pragmaReport.clean === true, 'Inline pragma // aegis-ignore: header-map-law cleanly bypasses Header Map Law');
 
-    console.log('✅ Group 1 (Scoped Header Map & Pragmas) passed all assertions.');
+    console.log('[PASS] Group 1 (Scoped Header Map & Pragmas) passed all assertions.');
     passed++;
   } catch (err) {
-    console.error('❌ Group 1 failed:', err.message);
+    console.error('[FAIL] Group 1 failed:', err.message);
     failed++;
   }
 
@@ -144,10 +144,10 @@ async function runV2MitigationTests() {
     const r6 = lintCoreLaws(rawBlobRpc, 'gas/Client.html');
     assert(r6.clean === false && r6.violations.some(v => v.law === 'SAFE_SERIALIZATION_LAW'), 'Raw un-serialized new Blob() across RPC vetoed');
 
-    console.log('✅ Group 2 (Numeric Timestamps & RPC Serialization) passed all assertions.');
+    console.log('[PASS] Group 2 (Numeric Timestamps & RPC Serialization) passed all assertions.');
     passed++;
   } catch (err) {
-    console.error('❌ Group 2 failed:', err.message);
+    console.error('[FAIL] Group 2 failed:', err.message);
     failed++;
   }
 
@@ -207,10 +207,10 @@ async function runV2MitigationTests() {
     clearHistory(testSession);
     try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
 
-    console.log('✅ Group 3 (Shadow Buffer Reconstruction & Diff Variance) passed all assertions.');
+    console.log('[PASS] Group 3 (Shadow Buffer Reconstruction & Diff Variance) passed all assertions.');
     passed++;
   } catch (err) {
-    console.error('❌ Group 3 failed:', err.message);
+    console.error('[FAIL] Group 3 failed:', err.message);
     failed++;
   }
 
@@ -230,10 +230,10 @@ async function runV2MitigationTests() {
     assert(elapsed >= 0 && elapsed <= 250, 'readStdinJson returns without hanging');
     assert(typeof result === 'object', 'readStdinJson returns parsed object');
 
-    console.log('✅ Group 4 (Event-Driven Stdin Stream Reading) passed all assertions.');
+    console.log('[PASS] Group 4 (Event-Driven Stdin Stream Reading) passed all assertions.');
     passed++;
   } catch (err) {
-    console.error('❌ Group 4 failed:', err.message);
+    console.error('[FAIL] Group 4 failed:', err.message);
     failed++;
   }
 
@@ -268,10 +268,10 @@ async function runV2MitigationTests() {
     const fallbackRun = parseTestRunnerOutput('node', 'All passed successfully\nDone in 0.4s', '', 0);
     assert(fallbackRun.passed === true && fallbackRun.testsRun >= 1, 'Generic fallback enforces testsRun >= 1');
 
-    console.log('✅ Group 5 (Benign Stderr Triage Filter) passed all assertions.');
+    console.log('[PASS] Group 5 (Benign Stderr Triage Filter) passed all assertions.');
     passed++;
   } catch (err) {
-    console.error('❌ Group 5 failed:', err.message);
+    console.error('[FAIL] Group 5 failed:', err.message);
     failed++;
   }
 

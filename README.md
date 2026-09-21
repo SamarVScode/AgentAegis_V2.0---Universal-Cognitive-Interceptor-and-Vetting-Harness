@@ -8,6 +8,9 @@
 
 AgentAegis is an enterprise-grade cognitive interceptor and validation harness for autonomous coding agents operating across Claude Code, Cursor, and Google Antigravity. By attaching directly to runtime lifecycle hooks (`PreToolUse`, `PostToolUse`, and `Stop`), AgentAegis enforces deterministic security controls, loop cycle detection, credential exfiltration prevention, claim-to-disk reconciliation, and automated test-suite verification before agent termination.
 
+> [!IMPORTANT]
+> **Security Boundaries & Sandboxing Scope**: AgentAegis operates in user-space as an application-level cognitive lifecycle defense-in-depth harness to prevent agent thrashing, cognitive drift, destructive shell errors, and credential exposure. It is **not** an operating-system-level sandbox or kernel hypervisor. Malicious binary containment and untrusted arbitrary process isolation strictly require containerization (Docker, eBPF, seccomp, gVisor, Firecracker microVMs).
+
 By decoupling lifecycle validation from the generative model synthesizing code, the harness executes local deterministic policies and delegates high-stakes semantic decisions to TypeSafe AI Jev (`jev-1.13.0`).
 
 ---
@@ -114,18 +117,18 @@ flowchart TD
     ShortCircuit --> Stage15
     
     Stage15 --> AuditTests{"Claimed Tests Pass?"}
-    AuditTests -->|"Discrepancy / 0 Tests Run"| HardVeto1["Hard Veto (Exit Code 1)"]
+    AuditTests -->|"Discrepancy / 0 Tests Run"| HardVeto1["Hard Veto (Hook Exit 2 / CLI Exit 1)"]
     AuditTests -->|"Reconciled"| AuditFiles{"Claimed Files Created/Modified?"}
     
-    AuditFiles -->|"File Missing on Disk (.js/.ts/.tsx/etc.)"| HardVeto2["Hard Veto (Exit Code 1)"]
+    AuditFiles -->|"File Missing on Disk (.js/.ts/.tsx/etc.)"| HardVeto2["Hard Veto (Hook Exit 2 / CLI Exit 1)"]
     AuditFiles -->|"Reconciled"| AuditBuild{"Claimed Build Succeeded?"}
     
-    AuditBuild -->|"Session Build Failed"| HardVeto3["Hard Veto (Exit Code 1)"]
+    AuditBuild -->|"Session Build Failed"| HardVeto3["Hard Veto (Hook Exit 2 / CLI Exit 1)"]
     AuditBuild -->|"Reconciled"| Stage2["Stage 2: Jev System One Semantic Gate"]
     
     Stage2 --> JevCheck{"Jev Approval P >= 0.85?"}
     JevCheck -->|"Pass"| ExitSuccess["Exit Code 0 (Task Released)"]
-    JevCheck -->|"Veto"| ExitVeto["Exit Code 1 (Completion Refused)"]
+    JevCheck -->|"Veto"| ExitVeto["Exit Code 2 (Completion Refused)"]
 ```
 
 ### Pipeline Breakdown
@@ -199,11 +202,11 @@ export function safeSpawnAsync(commandStr, options = {}) {
 
 ## Security Scope & Cognitive Defense-in-Depth
 
-AgentAegis provides cognitive lifecycle governance and application-layer defense-in-depth:
+AgentAegis provides cognitive lifecycle defense-in-depth against agent thrashing, cognitive drift, and accidental workspace destruction:
 
-- **Cognitive Interceptor Scope**: Intercepts destructive shell commands (`rm -rf`, `rd /s /q`, `git reset --hard`, `DROP DATABASE`), prevents credential path reads (`.env`, `id_rsa`, `*.pem`, `credentials.json`), and trips circuit breakers on edit loops.
-- **Boundary Clarification**: AgentAegis is **not** an operating-system-level sandbox or kernel virtualization hypervisor. It operates in user-space alongside the agent runtime.
-- **Untrusted Hostile Code**: When running untrusted, potentially adversarial third-party agents or executing unverified arbitrary binaries, AgentAegis must be deployed inside a containerized sandbox (Docker, eBPF, seccomp, gVisor, or Firecracker microVMs).
+- **Cognitive Interceptor Scope**: Intercepts destructive shell commands (`rm -rf`, `rd /s /q`, `git reset --hard`, `DROP DATABASE`), prevents credential path reads (`.env`, `id_rsa`, `*.pem`, `credentials.json`), lints universal AST code invariants, and trips circuit breakers on repetitive edit loops.
+- **Application-Layer Boundary**: AgentAegis operates in user-space alongside the agent runtime as a cognitive lifecycle governance harness. It is **not** an operating-system-level sandbox or kernel virtualization hypervisor.
+- **Malicious Binary Containment**: Hard containment of untrusted third-party code, adversarial binary execution, or hostile processes strictly requires OS-level virtualization or kernel sandboxing (Docker, eBPF, seccomp, gVisor, or Firecracker microVMs). AgentAegis is designed to operate seamlessly inside such containerized sandboxes as an inner cognitive guard.
 
 ---
 
@@ -237,7 +240,7 @@ TypeSafe AI Jev (`jev-1.13.0`) evaluated the AgentAegis architecture across a ri
 | **Cycle & Thrashing Prevention** | **1.95 / 3.00** | 100% loop termination at turn threshold <= 3 |
 | **Security Integrity** | **1.92 / 3.00** | Dual regex + semantic gate blocked all exfiltration vectors |
 | **Token Reduction Efficiency** | **1.87 / 3.00** | 90.5% - 96.6% wire-token compression |
-| **Production Readiness** | **1.82 / 3.00** | Fully packaged ES module, zero npm runtime dependencies |
+| **Production Readiness** | **1.82 / 3.00** | Fully packaged ES module (`dotenv` dependency) |
 | **Deployment Worth Recommendation** | **74.3% YES** | Aggregate Bayesian probability (`noul: 0.743`) |
 
 ---
@@ -295,7 +298,7 @@ flowchart TD
 
 ## Granular Module Breakdown
 
-The AgentAegis harness is implemented in modular, zero-dependency ES modules:
+The AgentAegis harness is implemented in modular ES modules:
 
 | Module | Source File | Core Responsibilities |
 | :--- | :--- | :--- |
@@ -398,25 +401,33 @@ agent-aegis [command] [options]
 ```
 
 ### Commands & Common Workflows
-
+ 
 ```bash
 # Install harness hooks into current workspace
 aegis install
 
-# Install hooks across all detected environments
+# Install hooks across all detected environments (Claude, Cursor, Antigravity)
 aegis install --all
 
-# Run verification acceptance gate manually
-aegis verify-gate
+# Run 3-Stage Acceptance Gate verification manually
+aegis verify
+# or alias
+aegis gate
 
-# Run dynamic harness test suite
+# Inspect active session history and loop circuit breaker status
+aegis check-cycle
+
+# Simulate destructive command intercept (verifies Exit Code 2 veto)
+aegis test:veto
+
+# Run dynamic harness test suite (11/11 modules)
 npm test
 
-# Test destructive command interceptor (simulates exit code 2 veto)
-npm run test:enhancements
-
-# Test cycle detector thrashing breaker
+# Run Aegis V2.0 mitigation and archetype test suite (5/5 groups)
 npm run test:v2
+
+# Run enhancement and bipartite security test suite (29/29 tests)
+npm run test:enhancements
 ```
 
 ### CLI Options

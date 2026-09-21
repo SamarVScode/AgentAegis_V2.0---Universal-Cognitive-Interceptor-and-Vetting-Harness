@@ -486,7 +486,7 @@ export async function runWorkflow4_JevGovernance() {
   console.log('[Probe 4B] Decision Clarity & Veto Actionability Query...');
   const state4B = {
     sample_core_laws_veto: `
-⚠️ [JEV CORE LAWS VETO]: Found 1 non-negotiable architectural violation(s):
+[WARN]️ [JEV CORE LAWS VETO]: Found 1 non-negotiable architectural violation(s):
   1. [HEADER_MAP_LAW] Line 14: Violation of Header Map Law: Hardcoded numeric index '[2]' detected in GAS context.
      Code: "const customerEmail = data[i][2];"
      Action: Use dynamic header resolution: 'headerMap[COLUMN_NAME]' or 'headers.indexOf("ColumnName")'. If intentional, annotate with '// aegis-ignore: header-map-law'.
@@ -668,7 +668,7 @@ Required Action: Cease editing 'src/services/auth.service.ts'. Inspect caller st
 
 async function main() {
   console.log('================================================================================');
-  console.log('🚀  STARTING TYPESAFE AEGIS REAL-WORLD DEVELOPER WORKFLOW & DX AUDIT');
+  console.log('[LAUNCH]  STARTING TYPESAFE AEGIS REAL-WORLD DEVELOPER WORKFLOW & DX AUDIT');
   console.log('    Governing Model: TypeSafe AI Jev (jev-1.13.0)');
   console.log('    API Endpoint:', TYPESAFE_API_URL);
   console.log('================================================================================');
@@ -684,17 +684,17 @@ async function main() {
     );
 
     console.log('\n================================================================================');
-    console.log(`🏁  AUDIT COMPLETE: ${auditResults.summary.passed}/${auditResults.summary.totalTests} tests passed (${auditResults.summary.passRatePct}%)`);
+    console.log(`[DONE]  AUDIT COMPLETE: ${auditResults.summary.passed}/${auditResults.summary.totalTests} tests passed (${auditResults.summary.passRatePct}%)`);
     console.log('================================================================================\n');
 
     fs.writeFileSync(OUTPUT_FILE, JSON.stringify(auditResults, null, 2), 'utf8');
-    console.log(`💾 Saved structured audit results to: ${OUTPUT_FILE}`);
+    console.log(`[SAVE] Saved structured audit results to: ${OUTPUT_FILE}`);
 
     // Also persist in scratch
     const scratchOutput = 'C:/Users/User/.gemini/antigravity-cli/brain/66127470-38b1-4235-b3f8-3066e76bc2b0/scratch/realworld-developer-workflow-audit.json';
     try {
       fs.writeFileSync(scratchOutput, JSON.stringify(auditResults, null, 2), 'utf8');
-      console.log(`💾 Persisted copy to scratch: ${scratchOutput}`);
+      console.log(`[SAVE] Persisted copy to scratch: ${scratchOutput}`);
     } catch {}
 
     if (auditResults.summary.failed > 0) {

@@ -38,12 +38,12 @@ function log(emoji, label, detail = '') {
 
 function recordResult(scenario, test, passed, detail = {}) {
   RESULTS.push({ scenario, test, passed, detail });
-  if (passed) { totalPass++; log('✅', test, JSON.stringify(detail)); }
-  else        { totalFail++; log('❌', test, JSON.stringify(detail)); }
+  if (passed) { totalPass++; log('[PASS]', test, JSON.stringify(detail)); }
+  else        { totalFail++; log('[FAIL]', test, JSON.stringify(detail)); }
 }
 
 console.log('\n================================================================================');
-console.log('🌍  REAL-WORLD HARNESS FLOW INTEGRATION TEST');
+console.log('[ENV]  REAL-WORLD HARNESS FLOW INTEGRATION TEST');
 console.log('    Cognitive Authority: TypeSafe AI Jev (jev-1.13.0)');
 console.log('    Session ID:', SESSION);
 console.log('================================================================================\n');
@@ -342,14 +342,14 @@ console.log();
 const passRate = Math.round((totalPass / (totalPass + totalFail)) * 100);
 
 console.log('================================================================================');
-console.log(`🏁  REAL-WORLD FLOW TEST COMPLETE`);
-console.log(`    Total: ${totalPass + totalFail} | ✅ Passed: ${totalPass} | ❌ Failed: ${totalFail} | Pass Rate: ${passRate}%`);
+console.log(`[DONE]  REAL-WORLD FLOW TEST COMPLETE`);
+console.log(`    Total: ${totalPass + totalFail} | [PASS] Passed: ${totalPass} | [FAIL] Failed: ${totalFail} | Pass Rate: ${passRate}%`);
 console.log('================================================================================\n');
 
 if (totalFail > 0) {
   console.log('FAILED TESTS:');
-  RESULTS.filter(r => !r.passed).forEach(r => console.log(' ❌', r.scenario, '|', r.test, '|', JSON.stringify(r.detail)));
+  RESULTS.filter(r => !r.passed).forEach(r => console.log(' [FAIL]', r.scenario, '|', r.test, '|', JSON.stringify(r.detail)));
   process.exit(1);
 } else {
-  console.log('✅ ALL REAL-WORLD FLOW TESTS PASSED. Jev has verified harness integrity.\n');
+  console.log('[PASS] ALL REAL-WORLD FLOW TESTS PASSED. Jev has verified harness integrity.\n');
 }

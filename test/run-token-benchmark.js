@@ -595,7 +595,7 @@ async function runBenchmark() {
   };
 
   fs.writeFileSync(RESULTS_PATH, JSON.stringify(results, null, 2));
-  console.log(`\n✅ Benchmark results successfully written to: ${RESULTS_PATH}`);
+  console.log(`\n[PASS] Benchmark results successfully written to: ${RESULTS_PATH}`);
   console.log('================================================================');
   console.log(`TOTAL TOKENS:  Unharnessed: ${totalScenarioATokens.toLocaleString()}  |  Harnessed: ${totalScenarioBTokens.toLocaleString()}  (-${tokenReductionPercentage.toFixed(2)}%)`);
   console.log(`TOTAL COST:    Unharnessed: $${totalScenarioACost.toFixed(4)}   |  Harnessed: $${totalScenarioBCost.toFixed(4)}   (-${costReductionPercentage.toFixed(2)}%, ${costReductionRatio.toFixed(2)}x cheaper)`);

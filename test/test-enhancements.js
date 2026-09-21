@@ -26,11 +26,11 @@ async function runTests() {
   function assert(condition, message) {
     total++;
     if (!condition) {
-      console.error(`❌ FAIL: ${message}`);
+      console.error(`[FAIL] FAIL: ${message}`);
       throw new Error(`Assertion failed: ${message}`);
     }
     passed++;
-    console.log(`✅ PASS: ${message}`);
+    console.log(`[PASS] PASS: ${message}`);
   }
 
   // ----------------------------------------------------
@@ -151,6 +151,6 @@ async function runTests() {
 }
 
 runTests().catch(err => {
-  console.error('\n❌ Enhancement test suite failed:\n', err);
+  console.error('\n[FAIL] Enhancement test suite failed:\n', err);
   process.exit(1);
 });

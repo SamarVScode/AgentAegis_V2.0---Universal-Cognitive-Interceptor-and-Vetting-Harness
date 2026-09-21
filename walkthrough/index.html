@@ -27,6 +27,7 @@
         <a href="#physics" class="nav-link">Token Physics</a>
         <a href="#terminal" class="nav-link">CLI Sandbox</a>
         <a href="#quickstart" class="nav-link">Quickstart</a>
+        <a href="#security" class="nav-link">Security</a>
       </nav>
       <div class="header-status">
         <span class="status-indicator"></span>
@@ -503,58 +504,139 @@ if (!linterRes.clean) {
           <div class="engine-panel active" id="panel-claude">
             <div class="panel-header">
               <span class="panel-config-path">Configuration file: .claude/settings.json</span>
-              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "npx @samarvscode/aegis preToolUse --engine claude", "postToolUse": "npx @samarvscode/aegis postToolUse --engine claude" } }'>COPY JSON</button>
+              <button class="btn-copy" data-copy='{ "hooks": { "PreToolUse": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"./harness/interceptor.js\" --engine claude pre-tool" }] }], "Stop": [{ "matcher": ".*", "hooks": [{ "type": "command", "command": "node \"./harness/interceptor.js\" --engine claude verify-gate" }] }] } }'>COPY JSON</button>
             </div>
             <pre class="panel-code"><code>{
   "hooks": {
-    "preToolUse": "npx @samarvscode/aegis preToolUse --engine claude",
-    "postToolUse": "npx @samarvscode/aegis postToolUse --engine claude"
+    "PreToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [{ "type": "command", "command": "node \"./harness/interceptor.js\" --engine claude pre-tool" }]
+      }
+    ],
+    "Stop": [
+      {
+        "matcher": ".*",
+        "hooks": [{ "type": "command", "command": "node \"./harness/interceptor.js\" --engine claude verify-gate" }]
+      }
+    ]
   }
 }</code></pre>
             <div class="panel-notes">
-              <span class="note-item"><span class="note-bullet">[OK]</span> Intercepts tool calls prior to execution</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Intercepts tool calls prior to execution via stdin payload</span>
               <span class="note-item"><span class="note-bullet">[OK]</span> Transmits telemetry through Claude Hook Protocol stdin/stdout</span>
-              <span class="note-item"><span class="note-bullet">[OK]</span> Preserves Claude context window bounds</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> PostToolUse regex runner tracking updates session.lastTestPassed</span>
             </div>
           </div>
 
           <!-- Cursor IDE Tab -->
           <div class="engine-panel" id="panel-cursor">
             <div class="panel-header">
-              <span class="panel-config-path">Configuration file: .cursor/hooks.json</span>
-              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "node ./harness/interceptor.js preToolUse --engine cursor", "postToolUse": "node ./harness/interceptor.js postToolUse --engine cursor" } }'>COPY JSON</button>
+              <span class="panel-config-path">Configuration file: .cursor/rules/jev-harness.mdc &amp; .cursor/hooks.json</span>
+              <button class="btn-copy" data-copy='{ "hooks": { "PreToolUse": [{ "command": "node \"./harness/interceptor.js\" --engine cursor pre-tool" }], "Stop": [{ "command": "node \"./harness/interceptor.js\" --engine cursor verify-gate" }] } }'>COPY JSON</button>
             </div>
             <pre class="panel-code"><code>{
   "hooks": {
-    "preToolUse": "node ./harness/interceptor.js preToolUse --engine cursor",
-    "postToolUse": "node ./harness/interceptor.js postToolUse --engine cursor"
+    "PreToolUse": [
+      { "command": "node \"./harness/interceptor.js\" --engine cursor pre-tool" }
+    ],
+    "Stop": [
+      { "command": "node \"./harness/interceptor.js\" --engine cursor verify-gate" }
+    ]
   }
 }</code></pre>
             <div class="panel-notes">
               <span class="note-item"><span class="note-bullet">[OK]</span> Traps Cursor background command executions</span>
               <span class="note-item"><span class="note-bullet">[OK]</span> Reconstructs virtual shadow buffer on file modifications</span>
-              <span class="note-item"><span class="note-bullet">[OK]</span> Halts recursive retry loops</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> Halts recursive retry loops (Turn 3/5 thresholds)</span>
             </div>
           </div>
 
           <!-- Google Antigravity Tab -->
           <div class="engine-panel" id="panel-antigravity">
             <div class="panel-header">
-              <span class="panel-config-path">Configuration file: .antigravity/hooks.json</span>
-              <button class="btn-copy" data-copy='{ "hooks": { "preToolUse": "node ./harness/interceptor.js preToolUse --engine antigravity", "verifyGate": "node ./harness/interceptor.js verify-gate --engine antigravity" } }'>COPY JSON</button>
+              <span class="panel-config-path">Configuration file: .agents/hooks.json (and .antigravity/hooks.json)</span>
+              <button class="btn-copy" data-copy='{ "hooks": { "PreToolUse": [{ "command": "node \"./harness/interceptor.js\" --engine antigravity pre-tool" }], "Stop": [{ "command": "node \"./harness/interceptor.js\" --engine antigravity verify-gate" }] } }'>COPY JSON</button>
             </div>
             <pre class="panel-code"><code>{
   "hooks": {
-    "preToolUse": "node ./harness/interceptor.js preToolUse --engine antigravity",
-    "verifyGate": "node ./harness/interceptor.js verify-gate --engine antigravity"
+    "PreToolUse": [
+      { "command": "node \"./harness/interceptor.js\" --engine antigravity pre-tool" }
+    ],
+    "Stop": [
+      { "command": "node \"./harness/interceptor.js\" --engine antigravity verify-gate" }
+    ]
   }
 }</code></pre>
             <div class="panel-notes">
               <span class="note-item"><span class="note-bullet">[OK]</span> Native subagent task sandboxing coordination</span>
               <span class="note-item"><span class="note-bullet">[OK]</span> State collector gathers verified runner artifacts before gate release</span>
-              <span class="note-item"><span class="note-bullet">[OK]</span> Prevents premature completion without passing tests</span>
+              <span class="note-item"><span class="note-bullet">[OK]</span> 3-Stage Acceptance Gate prevents premature completion without green tests</span>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Security Scope & Cognitive Defense-in-Depth Section -->
+  <section id="security" class="security-section">
+    <div class="section-container">
+      <div class="section-header">
+        <span class="section-eyebrow">APPLICATION-LAYER GOVERNANCE</span>
+        <h2 class="section-title">Security Scope &amp; Cognitive Defense-in-Depth</h2>
+        <p class="section-subtitle">
+          Precise architectural demarcation between user-space cognitive lifecycle governance and operating-system kernel isolation.
+        </p>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">COGNITIVE DEFENSE-IN-DEPTH</span>
+            <span class="metric-indicator secure">ACTIVE</span>
+          </div>
+          <div class="metric-value">Lifecycle Governance</div>
+          <div class="metric-desc">
+            Protects against agent thrashing, cognitive drift, destructive shell invocations (rm -rf, git reset --hard, DROP DATABASE), and secret key exfiltration (.env, id_rsa, *.pem).
+          </div>
+          <div class="metric-footer">Fastpath regex &lt;1.2ms + Jev fail-closed evaluation</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">SANDBOX BOUNDARY</span>
+            <span class="metric-indicator warning">PREREQUISITE</span>
+          </div>
+          <div class="metric-value">OS-Level Isolation</div>
+          <div class="metric-desc">
+            AgentAegis is an application-level cognitive harness, not a kernel hypervisor. Malicious binary containment requires containerization (Docker, eBPF, seccomp, gVisor, Firecracker).
+          </div>
+          <div class="metric-footer">Deploy inside container microVMs for untrusted code</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">SESSION ISOLATION</span>
+            <span class="metric-indicator positive">7-LEVEL CHAIN</span>
+          </div>
+          <div class="metric-value">Deterministic State</div>
+          <div class="metric-desc">
+            Resolves: AEGIS_SESSION_ID -&gt; stdinPayload.session_id -&gt; CONVERSATION_ID -&gt; CLAUDE_CONVERSATION_ID -&gt; CURSOR_SESSION_ID -&gt; .aegis-session -&gt; cwdHash.
+          </div>
+          <div class="metric-footer">Eliminates cross-process session fragmentation</div>
+        </div>
+
+        <div class="metric-card">
+          <div class="metric-header">
+            <span class="metric-tag">3-STAGE ACCEPTANCE GATE</span>
+            <span class="metric-indicator passed">GROUND TRUTH</span>
+          </div>
+          <div class="metric-value">Stage 1.5 Verification</div>
+          <div class="metric-desc">
+            Stage 1 runner detection &amp; short-circuit; Stage 1.5 Lie Detector audits claims vs disk (.js/.ts/.tsx/etc.) and test runs; Stage 2 Jev System One semantic evaluation.
+          </div>
+          <div class="metric-footer">PostToolUse runner regex tracks session.lastTestPassed</div>
         </div>
       </div>
     </div>

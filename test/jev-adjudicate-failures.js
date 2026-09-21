@@ -20,7 +20,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 console.log('\n================================================================================');
-console.log('🧠  JEV FAILURE ADJUDICATION — Let Jev Decide What To Fix');
+console.log('[JEV]  JEV FAILURE ADJUDICATION — Let Jev Decide What To Fix');
 console.log('    Authority: TypeSafe AI Jev (jev-1.13.0)');
 console.log('================================================================================\n');
 
@@ -296,7 +296,7 @@ console.log('\n[Jev Query 6/6] Re-submit harness as structured metrics to Jev fo
 // PRINT FULL RULING TABLE
 // ─────────────────────────────────────────────────────────────────────────────
 console.log('\n================================================================================');
-console.log('📋  JEV RULING SUMMARY — What Jev Decided To Fix');
+console.log('[REPORT]  JEV RULING SUMMARY — What Jev Decided To Fix');
 console.log('================================================================================\n');
 
 for (const r of rulings) {
@@ -311,5 +311,5 @@ fs.writeFileSync(
   JSON.stringify({ timestamp: new Date().toISOString(), rulings }, null, 2),
   'utf8'
 );
-console.log('✅ Rulings saved to: jev-failure-rulings.json');
+console.log('[PASS] Rulings saved to: jev-failure-rulings.json');
 console.log('================================================================================\n');

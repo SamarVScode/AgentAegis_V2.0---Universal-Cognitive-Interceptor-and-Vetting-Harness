@@ -111,8 +111,8 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
         return { passed: true, testsRun: passed };
       }
 
-      // node:test native runner: "ℹ tests 12\nℹ pass 12\nℹ fail 0"
-      const nodeTestMatch = combined.match(/ℹ?\s*pass\s+(\d+)\s+ℹ?\s*fail\s+(\d+)/i);
+      // node:test native runner: "tests 12\npass 12\nfail 0"
+      const nodeTestMatch = combined.match(/(?:\u2139|[iI])?\s*pass\s+(\d+)\s+(?:\u2139|[iI])?\s*fail\s+(\d+)/i);
       if (nodeTestMatch) {
         const passed = parseInt(nodeTestMatch[1], 10);
         const failed = parseInt(nodeTestMatch[2], 10);

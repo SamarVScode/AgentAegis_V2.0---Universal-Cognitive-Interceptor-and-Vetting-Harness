@@ -110,8 +110,8 @@ async function main() {
       id: 'F3_UNICODE_TASK_AND_PAYLOAD',
       name: 'Unicode characters in task description and replacement content',
       cmd: `node "${INTERCEPTOR}" --engine claude pre-tool replace_file_content`,
-      stdin: JSON.stringify({ file_path: 'index.js', TargetContent: '// Endpoints', ReplacementContent: '// 🚀 Endpoint: /café & /über' }),
-      env: { TASK_DESCRIPTION: 'Fix Unicode handling in /café endpoint 🚀' },
+      stdin: JSON.stringify({ file_path: 'index.js', TargetContent: '// Endpoints', ReplacementContent: '// [LAUNCH] Endpoint: /café & /über' }),
+      env: { TASK_DESCRIPTION: 'Fix Unicode handling in /café endpoint [LAUNCH]' },
       expected: 'Exit 0 or Exit 1 without throwing unhandled syntax error'
     },
 

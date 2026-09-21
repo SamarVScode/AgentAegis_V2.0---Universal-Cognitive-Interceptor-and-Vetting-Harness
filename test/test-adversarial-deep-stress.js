@@ -32,7 +32,7 @@ const OUTPUT_JSON_PATH = path.join(__dirname, '..', 'rigorous-adversarial-audit.
 
 async function runAdversarialAudit() {
   console.log('================================================================================');
-  console.log('⚔️  RIGOROUS ADVERSARIAL STRESS TESTING & SKEPTICAL JEV AUDIT');
+  console.log('[STRESS]️  RIGOROUS ADVERSARIAL STRESS TESTING & SKEPTICAL JEV AUDIT');
   console.log('Target: TypeSafe Aegis v2.0 (typesafe-aegis@2.0.0)');
   console.log('Cognitive Authority: TypeSafe AI Jev (jev-1.13.0)');
   console.log('Endpoint: https://api.typesafe.ai/v1/systemone');
@@ -48,10 +48,10 @@ async function runAdversarialAudit() {
     if (condition) {
       passedAssertions++;
       stressResults[category].push({ test: name, passed: true, details });
-      console.log(`  ✅ [PASS] ${name}`);
+      console.log(`  [PASS] [PASS] ${name}`);
     } else {
       stressResults[category].push({ test: name, passed: false, details });
-      console.log(`  ❌ [FAIL] ${name} ->`, details);
+      console.log(`  [FAIL] [FAIL] ${name} ->`, details);
     }
   }
 

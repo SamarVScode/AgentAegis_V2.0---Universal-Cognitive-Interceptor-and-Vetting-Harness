@@ -14,10 +14,10 @@ let pass = 0;
 for (const [raw, label] of cases) {
   try {
     const res = safeParseJson(raw);
-    console.log('✅', label, '->', JSON.stringify(res));
+    console.log('[PASS]', label, '->', JSON.stringify(res));
     pass++;
   } catch(e) {
-    console.log('❌ CRASHED on:', label, e.message);
+    console.log('[FAIL] CRASHED on:', label, e.message);
   }
 }
 console.log(`\nsafeParseJson resilience: ${pass}/${cases.length} PASS`);

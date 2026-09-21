@@ -347,6 +347,35 @@ const COMMAND_RESPONSES = {
     { text: '[SECURITY]: Fail-closed fastpath active. Overhead: < 1.2ms per tool invocation.', cls: 'term-cyan', delay: 700 },
     { text: '[STATUS]: Universal cognitive interceptor armed. Exit Code 0.', cls: 'term-emerald', delay: 850 }
   ],
+  'aegis check-cycle': [
+    { text: '[AEGIS CHECK-CYCLE]: Inspecting active session state...', cls: 'term-blue', delay: 100 },
+    { text: '[SESSION RESOLUTION]: Chain: AEGIS_SESSION_ID -> stdinPayload.session_id -> CONVERSATION_ID -> CLAUDE_CONVERSATION_ID -> CURSOR_SESSION_ID -> .aegis-session -> cwdHash', cls: 'term-blue', delay: 250 },
+    { text: '[ACTIVE SESSION]: ID = "sess_a8f92b" | Rolling History Entries: 2', cls: 'term-emerald', delay: 400 },
+    { text: '[CYCLE STATUS]: NOMINAL (No thrashing detected, variance = 0.42)', cls: 'term-emerald', delay: 550 },
+    { text: '[STATUS]: Circuit breaker nominal. Exit Code 0.', cls: 'term-cyan', delay: 700 }
+  ],
+  'aegis verify': [
+    { text: '[AEGIS VERIFY]: Executing 3-Stage Acceptance Gate on target workspace...', cls: 'term-blue', delay: 100 },
+    { text: '[STAGE 1]: Multi-ecosystem runner detected (Node.js/npm). Running test suites...', cls: 'term-blue', delay: 300 },
+    { text: '[STAGE 1 PASS]: safeSpawnAsync executed 11/11 tests green with zero failures.', cls: 'term-emerald', delay: 500 },
+    { text: '[STAGE 1.5]: Claim-to-Reality reconciliation verified against disk & session telemetry.', cls: 'term-emerald', delay: 700 },
+    { text: '[STAGE 2]: Jev System One semantic gate approved (P = 0.99).', cls: 'term-cyan', delay: 900 },
+    { text: '[AEGIS VERIFY PASS]: Acceptance gate cleared successfully. Exit code 0.', cls: 'term-emerald', delay: 1050 }
+  ],
+  'aegis gate': [
+    { text: '[AEGIS GATE]: Executing 3-Stage Acceptance Gate on target workspace...', cls: 'term-blue', delay: 100 },
+    { text: '[STAGE 1]: Multi-ecosystem runner detected. Executing test suites via safeSpawnAsync...', cls: 'term-blue', delay: 300 },
+    { text: '[STAGE 1 PASS]: 11/11 automated tests passed in 2.14s.', cls: 'term-emerald', delay: 500 },
+    { text: '[STAGE 1.5]: Claim-to-Reality ground truth reconciled (0 discrepancies).', cls: 'term-emerald', delay: 700 },
+    { text: '[STAGE 2]: Jev System One semantic gate approved (P = 0.99).', cls: 'term-cyan', delay: 900 },
+    { text: '[AEGIS GATE PASS]: Gate unlocked. Task released with exit code 0.', cls: 'term-emerald', delay: 1050 }
+  ],
+  'aegis test:veto': [
+    { text: '[AEGIS TEST:VETO]: Simulating destructive command invocation: rm -rf / --no-preserve-root', cls: 'term-blue', delay: 100 },
+    { text: '[SENSITIVE-GUARD]: Fastpath regex evaluation executing...', cls: 'term-blue', delay: 250 },
+    { text: '[JEV SAFETY VETO]: Destructive command pattern blocked by fastpath filter.', cls: 'term-crimson', delay: 450 },
+    { text: '[VETO ENFORCED]: Process terminated with Exit Code 2. Disk untouched.', cls: 'term-crimson', delay: 650 }
+  ],
   'test:veto': [
     { text: '[INTERCEPTOR HOOK]: Tool invocation detected: run_command', cls: 'term-blue', delay: 100 },
     { text: '[INSPECT PAYLOAD]: CommandLine = "rm -rf / --no-preserve-root"', cls: 'term-amber', delay: 250 },
@@ -362,25 +391,26 @@ const COMMAND_RESPONSES = {
     { text: '[CYCLE DETECTOR]: Virtual shadow buffer match. Diff variance = 0.00.', cls: 'term-amber', delay: 650 },
     { text: '[THRASHER DETECTED]: Repetitive tool execution sequence detected (Turn 3 >= Threshold 3).', cls: 'term-crimson', delay: 800 },
     { text: '[CIRCUIT BREAKER TRIPPED]: Halting execution loop to prevent quadratic token burn.', cls: 'term-crimson', delay: 950 },
-    { text: '[STATUS]: Loop terminated. Session state persisted to .jev/sessions/. Exit code 1.', cls: 'term-amber', delay: 1100 }
+    { text: '[STATUS]: Loop terminated. Session state persisted to .aegis-harness/. Exit code 2.', cls: 'term-amber', delay: 1100 }
   ],
   'test:gate': [
     { text: '[GATE TRIGGERED]: verify-gate invoked prior to task completion release...', cls: 'term-blue', delay: 100 },
-    { text: '[RUNNER PARSER]: Running configured test suites via Node.js runner...', cls: 'term-blue', delay: 300 },
-    { text: '[TEST RUNNER]: 11/11 automated tests passed (0 failures, 0 skipped) in 2.14s.', cls: 'term-emerald', delay: 500 },
-    { text: '[CORE LAWS LINTER]: Scanning workspace AST for decorative emojis & AI slop...', cls: 'term-blue', delay: 650 },
-    { text: '[CORE LAWS]: 0 emojis detected. 0 banned markdown patterns found.', cls: 'term-emerald', delay: 800 },
-    { text: '[JEV SYSTEM 1]: Bayesian rubric score = 2.88 / 3.00 (Staff/Executive caliber).', cls: 'term-cyan', delay: 950 },
+    { text: '[STAGE 1 RUNNER PARSER]: Running configured test suites via Node.js runner...', cls: 'term-blue', delay: 300 },
+    { text: '[STAGE 1 RUNNER]: 11/11 automated tests passed (0 failures, 0 skipped) in 2.14s.', cls: 'term-emerald', delay: 500 },
+    { text: '[STAGE 1.5 RECONCILIATION]: Auditing agent claims vs disk existence (.js/.ts/.tsx/etc.) and test status...', cls: 'term-blue', delay: 650 },
+    { text: '[STAGE 1.5 PASS]: All verifiable claims reconciled against disk & session telemetry.', cls: 'term-emerald', delay: 800 },
+    { text: '[STAGE 2 JEV SYSTEM 1]: Bayesian rubric score = 2.88 / 3.00 (Staff/Executive caliber).', cls: 'term-cyan', delay: 950 },
     { text: '[ACCEPTANCE GATE VERIFIED]: Gate unlocked. Task approved for release. Exit code 0.', cls: 'term-emerald', delay: 1100 }
   ],
   'help': [
-    { text: 'Available simulated commands:', cls: 'term-cyan', delay: 50 },
-    { text: '  aegis install    - Simulates automatic hook registration', cls: 'term-blue', delay: 100 },
-    { text: '  aegis --all      - Provisions Claude, Cursor, and Antigravity', cls: 'term-blue', delay: 150 },
-    { text: '  test:veto        - Simulates destructive command intercept (Exit code 2)', cls: 'term-blue', delay: 200 },
-    { text: '  test:cycle       - Simulates 3-turn thrashing loop breaker', cls: 'term-blue', delay: 250 },
-    { text: '  test:gate        - Simulates acceptance gate test verification', cls: 'term-blue', delay: 300 },
-    { text: '  clear            - Clears terminal scrollback', cls: 'term-blue', delay: 350 }
+    { text: 'Available simulated commands matching bin/cli.js:', cls: 'term-cyan', delay: 50 },
+    { text: '  aegis install      - Automatic hook registration for detected engines', cls: 'term-blue', delay: 100 },
+    { text: '  aegis --all        - Provisions Claude, Cursor, and Antigravity', cls: 'term-blue', delay: 150 },
+    { text: '  aegis verify       - Runs 3-Stage Acceptance Gate (safeSpawnAsync, Stage 1.5, Jev)', cls: 'term-blue', delay: 200 },
+    { text: '  aegis check-cycle  - Inspects active session history and loop circuit breaker', cls: 'term-blue', delay: 250 },
+    { text: '  aegis test:veto    - Simulates destructive command veto (Exit Code 2)', cls: 'term-blue', delay: 300 },
+    { text: '  test:cycle         - Simulates 3-turn thrashing loop breaker', cls: 'term-blue', delay: 350 },
+    { text: '  clear              - Clears terminal scrollback', cls: 'term-blue', delay: 400 }
   ]
 };
 
