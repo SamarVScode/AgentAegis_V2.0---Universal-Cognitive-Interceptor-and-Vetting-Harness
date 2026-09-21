@@ -26,12 +26,22 @@ if (isHookInvocation) {
     console.error(err.stack || '(no stack trace available)');
     process.exit(0);
   });
-} else if (rawArgs.includes('decisions') || rawArgs.includes('tracker') || rawArgs.includes('audit')) {
-  const targetDirIndex = rawArgs.indexOf('--target-dir');
-  let targetDir = targetDirIndex !== -1 && rawArgs[targetDirIndex + 1] ? rawArgs[targetDirIndex + 1] : process.cwd();
-  if (targetDir) targetDir = path.resolve(targetDir.replace(/^["']|["']$/g, ''));
-  const sessionIndex = rawArgs.indexOf('--session');
+} else if (rawArgs.some(a => ['decisions', 'tracker', 'audit', 'log'].includes(a))) {
+  const cmdIdx = rawArgs.findIndex(a => ['decisions', 'tracker', 'audit', 'log'].includes(a));
+  let targetDir = process.cwd();
+
+  const dIdx = rawArgs.findIndex(a => a === '--target-dir' || a === '-d' || a === '--path');
+  if (dIdx !== -1 && rawArgs[dIdx + 1] && !rawArgs[dIdx + 1].startsWith('-')) {
+    targetDir = rawArgs[dIdx + 1];
+  } else if (cmdIdx !== -1 && rawArgs[cmdIdx + 1] && !rawArgs[cmdIdx + 1].startsWith('-')) {
+    targetDir = rawArgs[cmdIdx + 1];
+  }
+
+  targetDir = path.resolve(targetDir.replace(/^["']|["']$/g, ''));
+  const sessionIndex = rawArgs.findIndex(a => a === '--session' || a === '-s');
   const sessionId = sessionIndex !== -1 && rawArgs[sessionIndex + 1] ? rawArgs[sessionIndex + 1].replace(/^["']|["']$/g, '') : null;
+  const limitIndex = rawArgs.findIndex(a => a === '--limit' || a === '-n');
+  const limit = limitIndex !== -1 && rawArgs[limitIndex + 1] ? parseInt(rawArgs[limitIndex + 1], 10) || 100 : 100;
 
   if (rawArgs.includes('--clear')) {
     clearDecisionHistory({ targetDir });
@@ -40,7 +50,7 @@ if (isHookInvocation) {
   }
 
   if (rawArgs.includes('--json')) {
-    const history = getDecisionHistory({ targetDir, sessionId, limit: 100 });
+    const history = getDecisionHistory({ targetDir, sessionId, limit });
     console.log(JSON.stringify(history, null, 2));
     process.exit(0);
   }

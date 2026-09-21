@@ -25,6 +25,23 @@ export function getAuditLogPath(targetDir = process.cwd(), sessionId = null) {
 }
 
 /**
+ * Searches upward from target directory to find the closest existing .aegis/decision-audit.jsonl
+ */
+export function findAuditLogPath(targetDir = process.cwd()) {
+  let curr = path.resolve(String(targetDir).replace(/^["']|["']$/g, ''));
+  const root = path.parse(curr).root;
+  while (curr) {
+    const candidate = path.join(curr, '.aegis', DEFAULT_AUDIT_FILENAME);
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+    if (curr === root) break;
+    curr = path.dirname(curr);
+  }
+  return getAuditLogPath(targetDir);
+}
+
+/**
  * Record a single cognitive decision into the persistent audit trail.
  */
 export function recordDecision(entry = {}) {
@@ -69,7 +86,7 @@ export function getDecisionHistory(options = {}) {
   const sessionId = options.sessionId || null;
   const limit = options.limit || 100;
   const filterType = options.filterType || null;
-  const logPath = getAuditLogPath(targetDir, sessionId);
+  const logPath = findAuditLogPath(targetDir);
 
   if (!fs.existsSync(logPath)) {
     return [];
