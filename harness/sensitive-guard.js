@@ -1,9 +1,9 @@
 /**
  * Sensitive Credential Exfiltration Guard (harness/sensitive-guard.js)
  * Bipartite heuristic fastpath scanner for read operations with Jev security escalation.
- * Mandated and calibrated by Jev (P=0.66 on heuristic credential guard, P=0.09 on blind read bypass).
  */
 
+import fs from 'fs';
 import path from 'path';
 import { jevBooleanCheck } from './jev-client.js';
 
@@ -20,6 +20,19 @@ export const SENSITIVE_PATH_PATTERNS = [
   /(^|[/\\])\.aegis-harness[/\\]/i,               // Harness session history (must not be readable by agent)
   /(^|[/\\])\.kube[/\\]/i                          // Kubernetes cluster configs
 ];
+
+export function getCustomDenyPatterns(workspaceDir = process.cwd()) {
+  try {
+    const configPath = path.join(workspaceDir, '.aegis.json');
+    if (fs.existsSync(configPath)) {
+      const cfg = JSON.parse(fs.readFileSync(configPath, 'utf8'));
+      if (Array.isArray(cfg.sensitive_patterns)) {
+        return cfg.sensitive_patterns.map(p => new RegExp(p, 'i'));
+      }
+    }
+  } catch {}
+  return [];
+}
 
 export const READ_TOOL_NAMES = [
   'view_file',
@@ -44,7 +57,7 @@ export function isReadInspectionTool(toolName = '') {
 /**
  * Tests whether a path matches credential or exfiltration patterns.
  */
-export function isSensitivePath(targetPath = '') {
+export function isSensitivePath(targetPath = '', workspaceDir = process.cwd()) {
   const rawPath = String(targetPath || '');
   if (!rawPath) return false;
 
@@ -64,12 +77,49 @@ export function isSensitivePath(targetPath = '') {
     return false;
   }
 
-  for (const pattern of SENSITIVE_PATH_PATTERNS) {
+  const customPatterns = getCustomDenyPatterns(workspaceDir);
+  const allPatterns = [...SENSITIVE_PATH_PATTERNS, ...customPatterns];
+
+  for (const pattern of allPatterns) {
     if (pattern.test(normalized) || pattern.test(rawNormalized) || pattern.test(decoded) || pattern.test(rawPath)) {
       return true;
     }
   }
   return false;
+}
+
+/**
+ * Inspects raw command strings for sensitive credential paths (Issue 4 mitigation)
+ */
+export function inspectCommandForSensitivePaths(cmdStr = '', workspaceDir = process.cwd()) {
+  if (!cmdStr || typeof cmdStr !== 'string') return { isSensitive: false, matchedPattern: null };
+
+  // Skip if referencing safe examples/templates only
+  if (/\.env\.(example|template)/i.test(cmdStr)) {
+    const stripped = cmdStr.replace(/\.env\.(example|template)/gi, '');
+    return inspectCommandForSensitivePaths(stripped, workspaceDir);
+  }
+
+  const commandSensitivePatterns = [
+    /(^|[\s"'/\=@])\.env(\.[\w-]+)?(\s|$|['"\\])/i,
+    /\b(id_rsa|id_ed25519)\b/i,
+    /(^|[\s"'/\=@])etc[/\\](shadow|passwd)/i,
+    /(^|[\s"'/\=@])\.aws[/\\]/i,
+    /(^|[\s"'/\=@])\.config[/\\]gcloud[/\\]/i,
+    /(^|[\s"'/\=@])\.kube[/\\]/i,
+    /\b(credentials|secrets|token|auth_token)\.(json|yaml|yml|xml)\b/i,
+    /\b[\w.-]+\.(pem|key|pkcs12|pfx|p12)\b/i
+  ];
+
+  const customPatterns = getCustomDenyPatterns(workspaceDir);
+  const allPatterns = [...commandSensitivePatterns, ...customPatterns];
+
+  for (const pattern of allPatterns) {
+    if (pattern.test(cmdStr)) {
+      return { isSensitive: true, matchedPattern: pattern.toString() };
+    }
+  }
+  return { isSensitive: false, matchedPattern: null };
 }
 
 /**

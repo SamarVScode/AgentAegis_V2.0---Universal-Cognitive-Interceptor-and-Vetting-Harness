@@ -5,3 +5,9 @@ node_modules/
 *.bak.*
 .DS_Store
 
+# Generated evaluation and benchmark JSON artifacts (Issue 10)
+test/*.json
+.aegis-harness/
+.aegis-session
+
+

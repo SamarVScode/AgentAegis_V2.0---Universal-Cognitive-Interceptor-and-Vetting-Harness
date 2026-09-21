@@ -1,7 +1,6 @@
 /**
  * Jev Client (harness/jev-client.js)
  * Native zero-dependency fetch client for TypeSafe AI System One (/v1/systemone).
- * Calibrated and Mandated by Jev (P=0.82 on native fetch, P=0.74 on bipartite fail-safe).
  */
 
 import fs from 'fs';

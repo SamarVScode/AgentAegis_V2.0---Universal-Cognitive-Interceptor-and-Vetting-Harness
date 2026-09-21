@@ -1,7 +1,6 @@
 /**
  * State Collector (harness/state-collector.js)
  * Adaptive Context Envelope Builder (500–1,000 tokens) & SHA-256 History Hasher.
- * Mandated and calibrated by Jev (P=0.77 on adaptive envelope, P=0.72 on focal chunking).
  */
 
 import { execSync } from 'child_process';

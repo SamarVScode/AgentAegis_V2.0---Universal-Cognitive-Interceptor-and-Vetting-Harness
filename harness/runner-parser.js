@@ -1,7 +1,6 @@
 /**
  * Test Runner Semantic Output Parser (harness/runner-parser.js)
  * Multi-framework semantic test output regex parsers (Jest/Vitest, pytest, cargo, gradlew, tsc, go).
- * Mandated and calibrated by Jev (P=0.85 on semantic output parsing, P=0.04 on exit-code-only trust, P=0.79 on benign stderr triage).
  */
 
 export const BENIGN_STDERR_PATTERNS = [

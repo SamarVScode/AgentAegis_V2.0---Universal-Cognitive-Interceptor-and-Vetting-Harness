@@ -1,7 +1,6 @@
 /**
  * Manifest Sniffer (harness/manifest-sniffer.js)
- * Dedicated zero-config ecosystem detector for Web, GAS, Android, and Backend projects.
- * Mandated and calibrated by Jev (P=0.75 on universal detection, P=0.70 on lockfile precedence).
+ * Dedicated zero-config ecosystem detector for Web, Node, Python, Rust, Go, and Mobile projects.
  */
 
 import fs from 'fs';

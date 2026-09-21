@@ -5,13 +5,11 @@
  * Coordinates preToolUse, postToolUse, and preExit lifecycle hooks.
  * Integrates:
  *   - sensitive-guard.js (Fastpath & exfiltration guard)
- *   - core-laws-linter.js (Zero-token 4 Core Laws linter)
+ *   - core-laws-linter.js (Universal code invariant linter)
  *   - cycle-detector.js (3 vs 5 thrashing circuit breaker + virtual shadow buffer)
  *   - state-collector.js (Adaptive context envelope)
  *   - jev-client.js (Native fetch client & bipartite fail-safe)
  *   - acceptance-gate.js (Deterministic runner parser & Jev completion gate)
- * 
- * Mandated and calibrated by Jev (P=0.74 on lifecycle coordinator, P=0.74 on Windows event-driven stdin).
  */
 
 import fs from 'fs';
@@ -20,7 +18,7 @@ import { createHash } from 'crypto';
 import { collectState } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
 import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
-import { evaluatePathSecurity, isReadInspectionTool } from './sensitive-guard.js';
+import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
 import { verifyAcceptanceGate } from './acceptance-gate.js';
 
 const rawArgs = process.argv.slice(2);
@@ -95,20 +93,21 @@ export function safeParseJson(raw) {
   return {};
 }
 
-// Event-driven stdin stream reader with Windows grace timeout (Fix 4)
+// Event-driven stdin stream reader with Windows grace timeout & chunk inactivity handling (Fix 4 & 5)
 export async function readStdinJson(timeoutMs = null) {
   if (process.stdin.isTTY) return {};
-  const defaultTimeout = 500; // Uniform 500ms on all platforms (raised from 100ms Unix / 350ms Windows)
+  const defaultTimeout = parseInt(process.env.AEGIS_STDIN_TIMEOUT_MS, 10) || 500;
   const effectiveTimeout = timeoutMs || defaultTimeout;
 
   return new Promise((resolve) => {
     let data = '';
     let resolved = false;
+    let timer = null;
 
     const finish = (result) => {
       if (!resolved) {
         resolved = true;
-        clearTimeout(timer);
+        if (timer) clearTimeout(timer);
         try { process.stdin.pause(); } catch {}
         resolve(result);
       }
@@ -118,6 +117,7 @@ export async function readStdinJson(timeoutMs = null) {
       const parsed = safeParseJson(rawStr);
       if (rawStr && rawStr.trim() && Object.keys(parsed).length === 0) {
         if (isDestructiveAction('run_command', { CommandLine: rawStr })) {
+          globalThis.__currentOperationDestructive = true;
           console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.`);
           process.exit(2);
         }
@@ -125,12 +125,21 @@ export async function readStdinJson(timeoutMs = null) {
       return parsed;
     };
 
-    const timer = setTimeout(() => {
-      finish(processPayload(data));
-    }, effectiveTimeout);
+    const resetTimer = (delay) => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        finish(processPayload(data));
+      }, delay);
+    };
+
+    resetTimer(effectiveTimeout);
 
     process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => { data += chunk; });
+    process.stdin.on('data', chunk => {
+      data += chunk;
+      // When chunks arrive, reset inactivity timer to allow incoming payload streaming
+      resetTimer(300);
+    });
     process.stdin.on('end', () => {
       finish(processPayload(data));
     });
@@ -145,7 +154,18 @@ export async function readStdinJson(timeoutMs = null) {
  */
 export async function runInterceptor() {
   const cwdHash = createHash('sha256').update(process.cwd()).digest('hex').slice(0, 8);
-  const sessionId = process.env.CONVERSATION_ID || process.env.CLAUDE_CONVERSATION_ID || process.env.CURSOR_SESSION_ID || ('cwd-' + cwdHash);
+  let sessionFromFile = null;
+  try {
+    const sessionFilePath = path.join(process.cwd(), '.aegis-session');
+    if (fs.existsSync(sessionFilePath)) {
+      sessionFromFile = fs.readFileSync(sessionFilePath, 'utf8').trim() || null;
+    }
+  } catch {}
+  const sessionId = process.env.CONVERSATION_ID ||
+                    process.env.CLAUDE_CONVERSATION_ID ||
+                    process.env.CURSOR_SESSION_ID ||
+                    sessionFromFile ||
+                    ('cwd-' + cwdHash);
 
   // -------------------------------------------------------------------------
   // HOOK 1: PRE-TOOL USE
@@ -222,6 +242,25 @@ export async function runInterceptor() {
       wholeFileContent = newContent;
     }
 
+    // Check if operation is destructive and set global flag for fail-closed error handling
+    const isDestructive = isDestructiveAction(toolName, toolArgs);
+    if (isDestructive) {
+      globalThis.__currentOperationDestructive = true;
+    }
+
+    // Generic command credential-exfiltration check (Issue 4 mitigation)
+    const cmdStr = (toolArgs.command || toolArgs.CommandLine || toolArgs.cmd || toolArgs.script || '').toString();
+    if (cmdStr) {
+      const sensitiveInCmd = inspectCommandForSensitivePaths(cmdStr);
+      if (sensitiveInCmd.isSensitive) {
+        const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION);
+        if (!secResult.approved) {
+          console.error(secResult.reason);
+          process.exit(2);
+        }
+      }
+    }
+
     // Step 1: Sensitive Credential Read Guard (Layer 1 Fastpath vs Layer 2 Security)
     if (isReadInspectionTool(toolName)) {
       const secResult = await evaluatePathSecurity(toolName, targetFile, process.env.TASK_DESCRIPTION);
@@ -245,20 +284,24 @@ export async function runInterceptor() {
       console.error(cycle.critique);
     }
 
-    // Step 4: Destructive Side-Effect Vetting via Jev System One
-    const isDestructive = isDestructiveAction(toolName, toolArgs);
+    // Step 4: Destructive Side-Effect Vetting via Jev System One (Isolated fail-closed guard)
     if (isDestructive) {
-      const state = collectState(process.env.TASK_DESCRIPTION, toolName, toolArgs, sessionId, '', 'localized');
-      const jevCheck = await jevBooleanCheck({
-        state,
-        assertion: 'Is this operation safe to proceed without risking irrecoverable data loss, database destruction, or repository corruption?',
-        criteriaTrue: 'The operation is safe, intentional, and standard for the task.',
-        criteriaFalse: 'The operation risks catastrophic data loss, database drops, hard git resets, or directory wipes.',
-        isDestructive: true
-      });
+      try {
+        const state = collectState(process.env.TASK_DESCRIPTION, toolName, toolArgs, sessionId, '', 'localized');
+        const jevCheck = await jevBooleanCheck({
+          state,
+          assertion: 'Is this operation safe to proceed without risking irrecoverable data loss, database destruction, or repository corruption?',
+          criteriaTrue: 'The operation is safe, intentional, and standard for the task.',
+          criteriaFalse: 'The operation risks catastrophic data loss, database drops, hard git resets, or directory wipes.',
+          isDestructive: true
+        });
 
-      if (!jevCheck.approved) {
-        console.error(`[JEV SAFETY VETO]: Operation '${toolName}' blocked by Jev safety filter: ${jevCheck.reason || 'High risk of destructive data loss.'}`);
+        if (!jevCheck.approved) {
+          console.error(`[JEV SAFETY VETO]: Operation '${toolName}' blocked by Jev safety filter: ${jevCheck.reason || 'High risk of destructive data loss.'}`);
+          process.exit(2);
+        }
+      } catch (vetErr) {
+        console.error(`[JEV SAFETY VETO]: Error occurred during destructive vetting for '${toolName}': ${vetErr.message}. Enforcing hard fail-closed.`);
         process.exit(2);
       }
     }
@@ -317,6 +360,10 @@ if (process.argv[1] && process.argv[1].endsWith('interceptor.js')) {
   runInterceptor().catch(err => {
     console.error('Interceptor unexpected error:', err.message);
     console.error(err.stack || '(no stack trace available)');
-    process.exit(0); // Fail open gracefully on internal unexpected error
+    if (globalThis.__currentOperationDestructive || rawArgs.some(a => isDestructiveAction('run_command', { CommandLine: a }))) {
+      console.error('[JEV SAFETY VETO]: Interceptor uncaught error during potentially destructive operation. Hard fail-closed enforced (exit 2).');
+      process.exit(2);
+    }
+    process.exit(0); // Fail open gracefully on internal unexpected error for benign operations
   });
 }

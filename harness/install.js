@@ -7,9 +7,9 @@
  *   - Cursor (.cursor/rules/jev-harness.mdc)
  *   - Antigravity / Agent CLI (.agents/hooks.json)
  * 
- * Mandated and calibrated by Jev:
- *   - Non-destructive safe merge with backup (P=0.93)
- *   - Explicit target flags & dry-run support (P=0.87)
+ * Features:
+ *   - Non-destructive safe merge with backup
+ *   - Explicit target flags & dry-run support
  */
 
 import fs from 'fs';

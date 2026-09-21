@@ -3,8 +3,7 @@
  * Dual-stage completion verification pipeline with Claim-to-Reality Reconciliation:
  *   Stage 1: Multi-framework test execution & semantic runner output parsing with benign stderr triage.
  *   Stage 1.5: Claim-to-Reality Reconciliation Engine ("Lie Detector") auditing agent claims against disk & telemetry.
- *   Stage 2: TypeSafe AI Jev completion gate with calibrated threshold (P >= 0.85).
- * Mandated and calibrated by Jev (P=0.85 on dual-stage gate, P=0.06 on agent self-declaration, P=0.79 on benign stderr triage).
+ *   Stage 2: TypeSafe AI Jev completion gate with decision threshold.
  */
 
 import fs from 'fs';
@@ -140,6 +139,16 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
         passed: false,
         stage: 'stage_1_semantic_parser',
         reason: 'Command not permitted: acceptance gate commands must begin with a known safe runner/builder (npm, yarn, pnpm, bun, node, pytest, cargo, go, gradle, gradlew, make, ctest, clasp).'
+      };
+    }
+
+    // Disallow shell chaining and control operators to prevent command injection
+    const SHELL_CONTROL_CHARS = /[;&|`$><]|\n|\r/;
+    if (SHELL_CONTROL_CHARS.test(trimmedCmd)) {
+      return {
+        passed: false,
+        stage: 'stage_1_semantic_parser',
+        reason: 'Command rejected: shell chaining and control operators (&&, ||, ;, |, `, $, >, <) are forbidden in acceptance gate custom commands.'
       };
     }
   }

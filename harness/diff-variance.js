@@ -1,7 +1,6 @@
 /**
  * Diff Variance Calculator (harness/diff-variance.js)
  * Normalized Levenshtein & Structural Diff Variance Calculator.
- * Mandated and calibrated by Jev (P=0.69 on diff variance, P=0.71 on 3 vs 5 threshold).
  */
 
 /**

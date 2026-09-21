@@ -1,7 +1,6 @@
 /**
  * Cycle Detector & Thrashing Circuit Breaker (harness/cycle-detector.js)
  * Multi-pattern loop detection (consecutive, oscillating, triangular) with diff variance integration.
- * Mandated and calibrated by Jev (P=0.80 on multi-pattern breaker, P=0.71 on diff variance threshold, P=0.65 on shadow buffer diff).
  */
 
 import fs from 'fs';
