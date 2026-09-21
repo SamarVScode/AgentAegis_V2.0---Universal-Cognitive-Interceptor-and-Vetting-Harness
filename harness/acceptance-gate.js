@@ -235,6 +235,33 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   const workspace = detectWorkspaceEcosystem(effectiveTargetDir);
   const testCommand = customCommand || workspace.testCommand || 'npm test';
 
+  if (!customCommand && workspace.ecosystem === 'unknown') {
+    const reconciliationResult = agentStatement
+      ? await reconcileClaimsWithGroundTruth(
+          extractVerifiableClaims(agentStatement),
+          loadSession(sessionId || 'default'),
+          effectiveTargetDir,
+          null
+        )
+      : null;
+    if (reconciliationResult && !reconciliationResult.reconciled) {
+      return {
+        passed: false,
+        stage: 'stage_1_5_claim_reconciliation',
+        reason: reconciliationResult.reason,
+        hardVeto: reconciliationResult.hardVeto || false
+      };
+    }
+    return {
+      passed: true,
+      stage: 'stage_1_no_test_contract',
+      probability: 1.0,
+      exitCode: 0,
+      testsRun: 0,
+      reason: 'No test contract detected: no package.json, lockfile, or build manifest in workspace. Stage 1 skipped. Stage 1.5 claim reconciliation applied.'
+    };
+  }
+
   let stdout = '';
   let stderr = '';
   let exitCode = 0;

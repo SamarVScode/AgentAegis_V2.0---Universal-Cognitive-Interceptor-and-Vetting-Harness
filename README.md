@@ -225,7 +225,26 @@ TYPESAFE_API_KEY=your_typesafe_api_key_here
 TYPESAFE_BASE_URL=https://api.typesafe.ai/v1/systemone
 ```
 
+### Session Fragmentation Fix (Required for Cycle Detector)
+
+**Problem**: `interceptor.js` derives the fallback session ID as `cwd-<hash>-p<ppid>`. `process.ppid` changes on every fresh node invocation (each Claude Code hook spawns a new node process). This produces a separate session bucket per tool call, so `cycle-detector.js` `rollingHistory` never accumulates — cycle detection is permanently blind.
+
+**Fix**: Claude Code exposes `CLAUDE_CONVERSATION_ID` in the hook execution environment as a stable per-session identifier. The session ID priority chain in `interceptor.js` (lines 166-171) already checks `CLAUDE_CONVERSATION_ID` before the `ppid` fallback. No code change is required — simply ensure the env var is present in the hook environment.
+
+For Claude Code, `CLAUDE_CONVERSATION_ID` is typically injected automatically. If your version does not inject it, set it manually:
+
+```bash
+# Option A: Source the helper script (also auto-maps CLAUDE_SESSION_ID if present)
+source scripts/set-session-env.sh
+
+# Option B: Set AEGIS_SESSION_ID to any stable string for your session
+export AEGIS_SESSION_ID="my-project-session-1"
+```
+
+**Tradeoff** (Jev 1b verified at 0.92): Dropping `ppidSuffix` entirely (keying on `cwd-hash` alone) would re-introduce the concurrent-agent session collision that `ppidSuffix` was added to prevent. The env-export approach avoids this: each Claude session has a unique `CLAUDE_CONVERSATION_ID`, so concurrent agents in the same directory are correctly isolated.
+
 ---
+
 
 ## Deterministic Verification Suite
 

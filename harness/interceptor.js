@@ -162,13 +162,18 @@ export async function runInterceptor() {
       sessionFromFile = fs.readFileSync(sessionFilePath, 'utf8').trim() || null;
     }
   } catch {}
-  const ppidSuffix = process.ppid ? `-p${process.ppid}` : '';
+  // Read stdin once before mode dispatch so session_id can be extracted.
+  // Each mode branch receives stdinPayload directly to avoid consuming stdin twice.
+  const stdinPayload = await readStdinJson();
+  // stdinPayload.session_id is stable across all Claude Code hook invocations
+  // (PreToolUse, PostToolUse, Stop) in one session. Eliminates ppid fragmentation.
   const sessionId = process.env.AEGIS_SESSION_ID ||
+                    stdinPayload.session_id ||
                     process.env.CONVERSATION_ID ||
                     process.env.CLAUDE_CONVERSATION_ID ||
                     process.env.CURSOR_SESSION_ID ||
                     sessionFromFile ||
-                    (`cwd-${cwdHash}${ppidSuffix}`);
+                    (`cwd-${cwdHash}`);
 
   // -------------------------------------------------------------------------
   // HOOK 1: PRE-TOOL USE
@@ -178,11 +183,11 @@ export async function runInterceptor() {
     let toolArgs = {};
 
     if (engine === 'antigravity') {
-      const stdinData = await readStdinJson();
+      const stdinData = stdinPayload;
       toolName = stdinData.toolCall?.name || stdinData.name || '';
       toolArgs = stdinData.toolCall?.args || stdinData.args || {};
     } else if (engine === 'claude' || engine === 'claude-code') {
-      const stdinData = await readStdinJson();
+      const stdinData = stdinPayload;
       if (stdinData.tool_name) {
         // Stdin envelope from Claude Code hook runtime
         toolName = stdinData.tool_name;
@@ -203,7 +208,7 @@ export async function runInterceptor() {
         }
       }
     } else if (engine === 'cursor') {
-      const stdinData = await readStdinJson();
+      const stdinData = stdinPayload;
       if (stdinData.name) {
         // Stdin envelope from Cursor hook runtime
         toolName = stdinData.name;
@@ -224,7 +229,7 @@ export async function runInterceptor() {
           }
         }
       } else {
-        const stdinData = await readStdinJson();
+        const stdinData = stdinPayload;
         toolArgs = Object.keys(stdinData).length > 0 ? stdinData : {};
       }
     }
@@ -326,7 +331,7 @@ export async function runInterceptor() {
   // HOOK 2: POST-TOOL USE
   // -------------------------------------------------------------------------
   if (mode === 'post-tool' || mode === 'postToolUse') {
-    const stdinData = await readStdinJson();
+    const stdinData = stdinPayload;
     const isError = stdinData.isError || stdinData.error;
     const stderr = stdinData.stderr || (isError ? String(stdinData.output || '') : '');
 
@@ -337,6 +342,37 @@ export async function runInterceptor() {
       saveSession(session, sessionId);
     }
 
+    // Test-runner outcome tracking via PostToolUse payload fields:
+    //   stdinData.tool_name       - e.g. 'Bash'
+    //   stdinData.tool_input.command - the command string
+    //   stdinData.tool_result.is_error - true if command failed
+    //   stdinData.tool_result.output   - combined stdout/stderr
+    // Known gap: make test, ./run-tests.sh, jest, vitest, mocha, deno test bypass this check
+    // NOTE: session ID must be stable (CLAUDE_CONVERSATION_ID exported) for the session
+    // written here by PostToolUse to be the same session read by the Stop hook.
+    const TEST_RUNNER_PATTERN = /^(npm|yarn|pnpm|bun)\s+test|pytest|cargo\s+test|go\s+test|node\s+.*test|gradlew\s+test/i;
+    const TEST_OUTPUT_FAIL_MARKERS = /passing|failing|failed|PASSED|FAILED|tests?\s+passed|test suite|AssertionError|FAIL\b/i;
+
+    if (stdinData.tool_name === 'Bash') {
+      const cmd = stdinData.tool_input?.command || '';
+      const output = stdinData.tool_result?.output || '';
+      const toolIsError = stdinData.tool_result?.is_error;
+
+      if (TEST_RUNNER_PATTERN.test(cmd)) {
+        const testSession = loadSession(sessionId);
+        if (toolIsError === true && TEST_OUTPUT_FAIL_MARKERS.test(output)) {
+          // Genuine test failure with test output - not a timeout or spawn error
+          testSession.lastTestPassed = false;
+          saveSession(testSession, sessionId);
+        } else if (toolIsError === false) {
+          // Clean exit - tests passed
+          testSession.lastTestPassed = true;
+          saveSession(testSession, sessionId);
+        }
+        // If toolIsError=true but no test output markers: timeout/spawn error - write nothing
+      }
+    }
+
     process.exit(0);
   }
 
@@ -344,7 +380,7 @@ export async function runInterceptor() {
   // HOOK 3: VERIFY GATE / PRE-EXIT
   // -------------------------------------------------------------------------
   if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit') {
-    const stdinData = await readStdinJson();
+    const stdinData = stdinPayload;
     const customCmd = arg1 || stdinData.command || stdinData.customCommand || null;
     const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
     const gateResult = await verifyAcceptanceGate(customCmd, process.cwd(), agentStatement, sessionId);
