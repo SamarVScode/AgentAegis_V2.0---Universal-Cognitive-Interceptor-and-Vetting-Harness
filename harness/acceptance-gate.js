@@ -374,6 +374,8 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   // Triage stderr to filter benign warnings (Fix 5)
   const { isBenign, cleanedStderr } = triageStderr(stderr);
 
+  const session = (sessionId && typeof sessionId === 'object') ? sessionId : loadSession(sessionId || 'default');
+
   // Step 2: Jev Semantic Completion Gate (P >= 0.85)
   const jevState = {
     workspace_ecosystem: workspace.ecosystem,
@@ -382,7 +384,32 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     tests_passed: parsedRun.testsRun ?? 1,
     tests_failed: 0,
     runner_summary: stdout.slice(-600).trim(),
-    has_unhandled_stderr: !isBenign && cleanedStderr.length > 0
+    has_unhandled_stderr: !isBenign && cleanedStderr.length > 0,
+    // 7-Pillar Precision Context Metadata
+    user_intent: (agentStatement || process.env.TASK_DESCRIPTION || 'Complete verified software engineering task').slice(0, 1500),
+    test_runner_contract: {
+      ecosystem: workspace.ecosystem,
+      command: testCommand,
+      exit_code: exitCode,
+      last_test_passed: exitCode === 0 && parsedRun.passed === true
+    },
+    disk_modification_state: {
+      claims_audited: Boolean(agentStatement && reconciliationResult),
+      file_modifications: reconciliationResult?.claims?.fileModifications || []
+    },
+    causal_trajectory: {
+      rolling_history: session.rollingHistory ? session.rollingHistory.slice(-5) : [],
+      stderr_tail: (stderr || '').slice(-600)
+    },
+    runtime_metadata: {
+      platform: process.platform,
+      node_version: process.version,
+      arch: process.arch
+    },
+    authorization_boundary: {
+      workspace_root: effectiveTargetDir,
+      allowed_paths: [effectiveTargetDir]
+    }
   };
 
   if (agentStatement && reconciliationResult) {

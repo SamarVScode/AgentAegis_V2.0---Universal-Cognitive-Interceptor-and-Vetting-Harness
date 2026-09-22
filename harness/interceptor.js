@@ -15,7 +15,7 @@
 import fs from 'fs';
 import path from 'path';
 import { createHash } from 'crypto';
-import { collectState } from './state-collector.js';
+import { collectState, extractUserGoal } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
 import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
@@ -238,6 +238,17 @@ export async function runInterceptor() {
     const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || '';
     const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
 
+    // Dynamic intent resolution: Extract user task goal if missing or generic
+    const userGoal = extractUserGoal({
+      engine,
+      transcriptPath: stdinPayload.transcript_path,
+      conversationId: sessionId,
+      cwd: process.cwd()
+    });
+    if (userGoal && (!process.env.TASK_DESCRIPTION || process.env.TASK_DESCRIPTION === 'Autonomous software engineering task')) {
+      process.env.TASK_DESCRIPTION = userGoal;
+    }
+
     // Virtual whole-file buffer reconstruction for replace_file_content (Fix 3)
     let wholeFileContent = newContent;
     if (toolName === 'replace_file_content' || toolName.includes('replace')) {
@@ -345,7 +356,21 @@ export async function runInterceptor() {
     // Step 4: Destructive Side-Effect Vetting via Jev System One (Isolated fail-closed guard)
     if (isDestructive) {
       try {
-        const state = collectState(process.env.TASK_DESCRIPTION, toolName, toolArgs, sessionId, '', 'localized');
+        const session = loadSession(sessionId);
+        const resolvedTask = (process.env.TASK_DESCRIPTION && process.env.TASK_DESCRIPTION !== 'Autonomous software engineering task')
+          ? process.env.TASK_DESCRIPTION
+          : (userGoal || process.env.TASK_DESCRIPTION || 'Autonomous software engineering task');
+
+        const stateOptions = {
+          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 1500) : null,
+          rollingHistory: session.rollingHistory || [],
+          lastStderr: session.lastStderr || '',
+          lastTestPassed: session.lastTestPassed ?? null,
+          authorization: { workspace_root: process.cwd(), role: 'developer' },
+          runtimeMetadata: { platform: process.platform, node_version: process.version, arch: process.arch }
+        };
+
+        const state = collectState(resolvedTask, toolName, toolArgs, sessionId, session.lastStderr || '', 'localized', stateOptions);
         const jevCheck = await jevBooleanCheck({
           state,
           assertion: 'Is this operation safe to proceed without risking irrecoverable data loss, database destruction, or repository corruption?',
