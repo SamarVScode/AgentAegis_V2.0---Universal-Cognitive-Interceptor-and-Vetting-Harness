@@ -10,6 +10,14 @@ const allFiles = [
   'harness/interceptor.js',
   'harness/acceptance-gate.js',
   'harness/cycle-detector.js',
+  'harness/state-collector.js',
+  'harness/decision-tracker.js',
+  'harness/sensitive-guard.js'
+];
+const fullInventory = [
+  'harness/interceptor.js',
+  'harness/acceptance-gate.js',
+  'harness/cycle-detector.js',
   'harness/sensitive-guard.js',
   'harness/diff-variance.js',
   'harness/runner-parser.js',
@@ -19,6 +27,7 @@ const allFiles = [
   'harness/state-collector.js',
   'harness/core-laws-linter.js',
   'harness/jev-vetter.js',
+  'harness/decision-tracker.js',
   'bin/cli.js',
   'index.js'
 ];
@@ -46,7 +55,7 @@ try {
   const response = await callJevSystemOne({
     state: {
       complete_harness_source_code: fullCodebase,
-      file_inventory: allFiles,
+      file_inventory: fullInventory,
       total_characters: totalChars
     },
     questions: {

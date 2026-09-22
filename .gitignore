@@ -10,5 +10,9 @@ test/*.json
 benchmarks/
 .aegis-harness/
 .aegis-session
+.aegis/
+.agents/
+.cursor/
+scratch/
 
 

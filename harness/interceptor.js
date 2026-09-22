@@ -30,6 +30,34 @@ const cleanArgs = rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 
 
 const [mode = 'pre-tool', arg1, arg2] = cleanArgs;
 
+/**
+ * Universal exit helper supporting both Claude/Cursor (exit codes)
+ * and Antigravity (JSON response on stdout).
+ */
+export function exitWithDecision({ allowed = true, reason = '', mode = 'pre-tool', engine = 'claude' } = {}) {
+  if (engine === 'antigravity') {
+    if (mode === 'pre-tool' || mode === 'preToolUse') {
+      const response = allowed
+        ? { decision: 'allow' }
+        : { decision: 'deny', reason: reason || 'Operation vetoed by Jev cognitive harness.' };
+      process.stdout.write(JSON.stringify(response) + '\n');
+      process.exit(allowed ? 0 : 2);
+    } else if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || mode === 'Stop') {
+      const response = allowed
+        ? { decision: 'allow' }
+        : { decision: 'continue', reason: reason || 'Acceptance gate rejected termination. Resolve failing tests.' };
+      process.stdout.write(JSON.stringify(response) + '\n');
+      process.exit(allowed ? 0 : 2);
+    } else {
+      process.stdout.write('{}\n');
+      process.exit(0);
+    }
+  }
+
+  // Claude Code / Cursor / Default standard exit code contract
+  process.exit(allowed ? 0 : 2);
+}
+
 // Helper to parse JSON with auto-stripping of shell single-quotes and resilient fallback
 export function safeParseJson(raw) {
   if (!raw) return {};
@@ -286,7 +314,7 @@ export async function runInterceptor() {
             reason: secResult.reason
           });
           console.error(secResult.reason);
-          process.exit(2);
+          exitWithDecision({ allowed: false, reason: secResult.reason, mode, engine });
         }
       }
     }
@@ -296,7 +324,7 @@ export async function runInterceptor() {
       const secResult = await evaluatePathSecurity(toolName, targetFile, process.env.TASK_DESCRIPTION);
       if (secResult.fastpath) {
         // Fastpath approved: 0 tokens, 0ms latency
-        process.exit(0);
+        exitWithDecision({ allowed: true, mode, engine });
       }
       if (!secResult.approved) {
         recordDecision({
@@ -310,7 +338,7 @@ export async function runInterceptor() {
           reason: secResult.reason
         });
         console.error(secResult.reason);
-        process.exit(2); // Hard exit 2 veto
+        exitWithDecision({ allowed: false, reason: secResult.reason, mode, engine });
       }
     }
 
@@ -328,7 +356,7 @@ export async function runInterceptor() {
         reason: cycle.critique
       });
       console.error(cycle.critique);
-      process.exit(2); // Hard block repetitive thrashing
+      exitWithDecision({ allowed: false, reason: cycle.critique, mode, engine });
     }
     if (cycle.warning && cycle.critique) {
       console.error(cycle.critique);
@@ -349,7 +377,7 @@ export async function runInterceptor() {
           reason: `Violated ${lintResult.violations.length} core law(s)`
         });
         console.error(formatCoreLawsReport(lintResult.violations));
-        process.exit(2); // Hard block universal code invariant violation
+        exitWithDecision({ allowed: false, reason: `Violated ${lintResult.violations.length} core law(s)`, mode, engine });
       }
     }
 
@@ -389,12 +417,38 @@ export async function runInterceptor() {
           verdict: jevCheck.approved ? 'approved' : 'vetoed',
           noul: jevCheck.noul,
           probability: jevCheck.probability,
-          reason: jevCheck.reason
+          reason: jevCheck.reason,
+          metadata: {
+            user_intent: resolvedTask,
+            assertion: 'Is this operation safe to proceed without risking irrecoverable data loss, database destruction, or repository corruption?',
+            criteria: {
+              true: 'The operation is safe, intentional, and standard for the task.',
+              false: 'The operation risks catastrophic data loss, database drops, hard git resets, or directory wipes.'
+            },
+            model: jevCheck.model || 'jev-1.13.0',
+            seven_pillars: {
+              pillar_1_user_intent: state.task,
+              pillar_2_proposed_action: {
+                tool: state.proposed_tool,
+                args: state.tool_args,
+                runtime_metadata: stateOptions.runtimeMetadata
+              },
+              pillar_3_target_file_ast: state.target_file_ast,
+              pillar_4_git_delta: {
+                status: state.git_status,
+                diff_stat: state.diff_stat,
+                git_diff: state.git_diff
+              },
+              pillar_5_causal_trajectory: state.causal_trajectory,
+              pillar_6_verification_contract: state.workspace,
+              pillar_7_authorization_boundary: state.authorization_boundary
+            }
+          }
         });
 
         if (!jevCheck.approved) {
           console.error(`[JEV SAFETY VETO]: Operation '${toolName}' blocked by Jev safety filter: ${jevCheck.reason || 'High risk of destructive data loss.'}`);
-          process.exit(2);
+          exitWithDecision({ allowed: false, reason: jevCheck.reason || 'High risk of destructive data loss.', mode, engine });
         }
       } catch (vetErr) {
         recordDecision({
@@ -408,12 +462,12 @@ export async function runInterceptor() {
           reason: `Vetting error: ${vetErr.message}. Enforcing hard fail-closed.`
         });
         console.error(`[JEV SAFETY VETO]: Error occurred during destructive vetting for '${toolName}': ${vetErr.message}. Enforcing hard fail-closed.`);
-        process.exit(2);
+        exitWithDecision({ allowed: false, reason: `Vetting error: ${vetErr.message}. Enforcing hard fail-closed.`, mode, engine });
       }
     }
 
     // Approved to proceed
-    process.exit(0);
+    exitWithDecision({ allowed: true, mode, engine });
   }
 
   // -------------------------------------------------------------------------
@@ -502,14 +556,14 @@ export async function runInterceptor() {
       console.error(`\n======================================================`);
       console.error(`[JEV ACCEPTANCE GATE]: Verification Passed (${gateResult.reason})`);
       console.error(`======================================================\n`);
-      process.exit(0);
+      exitWithDecision({ allowed: true, mode, engine });
     } else {
       console.error(`\n======================================================`);
       console.error(`[JEV ACCEPTANCE GATE REJECTED]: ${gateResult.reason}`);
       console.error(`Exit Code: ${gateResult.exitCode ?? 'none'} | Tests Run: ${gateResult.testsRun ?? 'none'}`);
       console.error(`Agent completion halted. Resolve failing tests before terminating.`);
       console.error(`======================================================\n`);
-      process.exit(2); // Veto termination
+      exitWithDecision({ allowed: false, reason: gateResult.reason, mode, engine });
     }
   }
 

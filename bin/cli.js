@@ -55,6 +55,64 @@ if (isHookInvocation) {
     process.exit(0);
   }
 
+  if (rawArgs.includes('--detail') || rawArgs.includes('--verbose')) {
+    const history = getDecisionHistory({ targetDir, sessionId, limit });
+    if (history.length === 0) {
+      console.log('[AEGIS TRACKER]: No decision records found.');
+    } else {
+      console.log('======================================================');
+      console.log('          AGENTAEGIS DETAILED DECISION LOGS');
+      console.log('======================================================');
+      for (const dec of history) {
+        console.log(`[${dec.passed ? 'PASS' : 'VETO'}] ${dec.decisionType} (${dec.timestamp})`);
+        console.log(`  Source       : ${dec.source}`);
+        console.log(`  Tool / Input : ${dec.toolName} -> ${dec.inputSummary}`);
+        console.log(`  Verdict      : ${dec.verdict} (prob: ${dec.probability ?? 'n/a'}, noul: ${dec.noul ?? 'n/a'})`);
+        console.log(`  Reason       : ${dec.reason}`);
+        if (dec.metadata?.assertion) {
+          console.log(`  Jev Assertion: ${dec.metadata.assertion}`);
+        }
+        if (dec.metadata?.user_intent) {
+          console.log(`  User Intent  : ${dec.metadata.user_intent}`);
+        }
+        if (dec.metadata?.seven_pillars) {
+          const sp = dec.metadata.seven_pillars;
+          console.log('  7-Pillars Precision Context:');
+          console.log(`    Pillar 1 (Intent)      : ${sp.pillar_1_user_intent || 'None'}`);
+          console.log(`    Pillar 2 (Action)      : ${dec.toolName} (OS: ${sp.pillar_2_proposed_action?.runtime_metadata?.platform || process.platform})`);
+          if (sp.pillar_3_target_file_ast) {
+            console.log(`    Pillar 3 (Target AST)  : ${sp.pillar_3_target_file_ast.slice(0, 100).replace(/\n/g, ' ')}...`);
+          }
+          if (sp.pillar_4_git_delta) {
+            const gd = sp.pillar_4_git_delta;
+            console.log(`    Pillar 4 (Git Delta)   :`);
+            if (gd.status) console.log(`      Status  : ${gd.status.replace(/\n/g, ', ')}`);
+            if (gd.diff_stat) console.log(`      DiffStat: ${gd.diff_stat.replace(/\n/g, ' ')}`);
+            if (gd.git_diff) {
+              const diffLines = gd.git_diff.slice(0, 400).split('\n').map(l => `        ${l}`).join('\n');
+              console.log(`      Unified Diff:\n${diffLines}`);
+            }
+          }
+          if (sp.pillar_5_causal_trajectory) {
+            const ct = sp.pillar_5_causal_trajectory;
+            const historyCount = Array.isArray(ct.rolling_history) ? ct.rolling_history.length : 0;
+            console.log(`    Pillar 5 (Trajectory)  : ${historyCount} prior turn actions in history`);
+          }
+          if (sp.pillar_6_verification_contract) {
+            const vc = sp.pillar_6_verification_contract;
+            console.log(`    Pillar 6 (Contract)    : Ecosystem ${vc.ecosystem || 'unknown'} (lastPassed: ${vc.last_test_passed})`);
+          }
+          if (sp.pillar_7_authorization_boundary) {
+            const ab = sp.pillar_7_authorization_boundary;
+            console.log(`    Pillar 7 (Auth Boundary): Root '${ab.workspace_root || '.'}'`);
+          }
+        }
+        console.log('------------------------------------------------------');
+      }
+    }
+    process.exit(0);
+  }
+
   const summary = getDecisionSummary({ targetDir, sessionId });
   console.log(formatDecisionSummary(summary));
   process.exit(0);
@@ -112,6 +170,9 @@ Options:
   --cursor              Install rules for Cursor (.cursor/rules/jev-harness.mdc)
   --antigravity         Install hooks for Google Antigravity (.agents/hooks.json)
   --target-dir <path>   Specify target workspace directory (default: current directory)
+  --detail, --verbose   Show detailed decision audit with Jev assertion, criteria, and user intent
+  --json                Output decisions as raw structured JSON array
+  --clear               Clear the persistent decision audit log
   --dry-run             Simulate installation without writing files to disk
   -v, --version         Display package version
   -h, --help            Show this help message

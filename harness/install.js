@@ -275,8 +275,8 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
     }
   }
 
-  const relPath = path.relative(targetDir, interceptorPath).replace(/\\/g, '/');
-  const execPath = (relPath && !relPath.startsWith('..') && !path.isAbsolute(relPath))
+  const relPath = path.relative(agentsDir, interceptorPath).replace(/\\/g, '/');
+  const execPath = (relPath && !path.isAbsolute(relPath))
     ? (relPath.startsWith('.') ? relPath : `./${relPath}`)
     : interceptorPath;
 
@@ -284,21 +284,33 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   const stopCmd = `node "${execPath}" --engine antigravity verify-gate`;
 
   const updated = { ...existing };
-  if (!updated.hooks || typeof updated.hooks !== 'object') {
-    updated.hooks = {};
+  
+  // Format as official Antigravity named hook configuration
+  const HOOK_NAME = 'aegis-guard';
+  if (!updated[HOOK_NAME] || typeof updated[HOOK_NAME] !== 'object') {
+    updated[HOOK_NAME] = {};
   }
 
-  // Merge PreToolUse
-  if (!Array.isArray(updated.hooks.PreToolUse)) updated.hooks.PreToolUse = [];
-  const preIdx = updated.hooks.PreToolUse.findIndex(h => typeof h === 'object' && h.command && h.command.includes('interceptor.js'));
-  if (preIdx !== -1) updated.hooks.PreToolUse[preIdx] = { command: preToolCmd };
-  else updated.hooks.PreToolUse.push({ command: preToolCmd });
+  // PreToolUse requires grouped matcher structure
+  updated[HOOK_NAME].PreToolUse = [
+    {
+      matcher: '.*',
+      hooks: [
+        {
+          type: 'command',
+          command: preToolCmd
+        }
+      ]
+    }
+  ];
 
-  // Merge Stop
-  if (!Array.isArray(updated.hooks.Stop)) updated.hooks.Stop = [];
-  const stopIdx = updated.hooks.Stop.findIndex(h => typeof h === 'object' && h.command && h.command.includes('interceptor.js'));
-  if (stopIdx !== -1) updated.hooks.Stop[stopIdx] = { command: stopCmd };
-  else updated.hooks.Stop.push({ command: stopCmd });
+  // Stop is a flat handler list
+  updated[HOOK_NAME].Stop = [
+    {
+      type: 'command',
+      command: stopCmd
+    }
+  ];
 
   const content = JSON.stringify(updated, null, 2) + '\n';
 
@@ -424,6 +436,19 @@ export function runInstall(options = {}) {
   console.log('================================================================================\n');
 
   const mainConfig = results[0] ? JSON.parse(results[0].content) : buildMergedHooksConfig({}, 'antigravity', interceptorPath);
+  if (mainConfig && !mainConfig.hooks) {
+    const guard = mainConfig['aegis-guard'] || mainConfig;
+    const extractCmd = (item) => {
+      if (typeof item === 'string') return item;
+      if (item?.command) return item.command;
+      if (item?.hooks?.[0]?.command) return item.hooks[0].command;
+      return '';
+    };
+    mainConfig.hooks = {
+      PreToolUse: (guard.PreToolUse || []).map(entry => ({ command: extractCmd(entry) })),
+      Stop: (guard.Stop || []).map(entry => ({ command: extractCmd(entry) }))
+    };
+  }
   return {
     success: true,
     dryRun,

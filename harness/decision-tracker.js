@@ -86,7 +86,8 @@ export function getDecisionHistory(options = {}) {
   const sessionId = options.sessionId || null;
   const limit = options.limit || 100;
   const filterType = options.filterType || null;
-  const logPath = findAuditLogPath(targetDir);
+  const isCustomDir = Boolean(options.targetDir && path.resolve(options.targetDir) !== path.resolve(process.cwd()));
+  const logPath = isCustomDir ? getAuditLogPath(targetDir) : findAuditLogPath(targetDir);
 
   if (!fs.existsSync(logPath)) {
     return [];
@@ -231,13 +232,10 @@ export function formatDecisionSummary(summary) {
 export function clearDecisionHistory(options = {}) {
   const targetDir = options.targetDir || process.cwd();
   const logPath = getAuditLogPath(targetDir);
-  if (fs.existsSync(logPath)) {
-    try {
-      fs.unlinkSync(logPath);
-      return true;
-    } catch {
-      return false;
-    }
+  try {
+    fs.writeFileSync(logPath, '', 'utf8');
+    return true;
+  } catch {
+    return false;
   }
-  return true;
 }

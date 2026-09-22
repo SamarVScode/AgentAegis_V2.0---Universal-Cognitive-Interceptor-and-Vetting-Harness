@@ -17,21 +17,24 @@ By decoupling lifecycle validation from the generative model synthesizing code, 
 
 ## Table of Contents
 1. [The Decoupled Decider-Actuator Architecture](#the-decoupled-decider-actuator-architecture)
-2. [Session Resolution Chain & Isolation](#session-resolution-chain--isolation)
-3. [3-Stage Acceptance Gate & Ground-Truth Reconciliation](#3-stage-acceptance-gate--ground-truth-reconciliation)
-4. [PostToolUse Telemetry & Test State Tracking](#posttooluse-telemetry--test-state-tracking)
-5. [Windows & Cross-Platform Subprocess Execution](#windows--cross-platform-subprocess-execution)
-6. [Security Scope & Cognitive Defense-in-Depth](#security-scope--cognitive-defense-in-depth)
-7. [Bipartite Fail-Safe & Network Outage Matrix](#bipartite-fail-safe--network-outage-matrix)
-8. [Empirical Jev System One Benchmark Metrics](#empirical-jev-system-one-benchmark-metrics)
-9. [Empirical Multi-Turn Case Study](#empirical-multi-turn-case-study)
-10. [The Three-Pillar Token Optimization Architecture](#the-three-pillar-token-optimization-architecture)
-11. [Granular Module Breakdown](#granular-module-breakdown)
-12. [Large Codebase & 500+ MB Dataset Scalability](#large-codebase--500-mb-dataset-scalability)
-13. [Installation & Multi-Engine Setup](#installation--multi-engine-setup)
-14. [CLI Reference](#cli-reference)
-15. [Deterministic Verification Suite](#deterministic-verification-suite)
-16. [License](#license)
+2. [The 7-Pillars Precision Context Architecture](#the-7-pillars-precision-context-architecture)
+3. [Session Resolution Chain & Isolation](#session-resolution-chain--isolation)
+4. [3-Stage Acceptance Gate & Ground-Truth Reconciliation](#3-stage-acceptance-gate--ground-truth-reconciliation)
+5. [Deterministic Policy Pre-Gates & Single Gate Authority](#deterministic-policy-pre-gates--single-gate-authority)
+6. [PostToolUse Telemetry & Test State Tracking](#posttooluse-telemetry--test-state-tracking)
+7. [Windows & Cross-Platform Subprocess Execution](#windows--cross-platform-subprocess-execution)
+8. [Security Scope & Cognitive Defense-in-Depth](#security-scope--cognitive-defense-in-depth)
+9. [Bipartite Fail-Safe & Network Outage Matrix](#bipartite-fail-safe--network-outage-matrix)
+10. [Independent Architecture Review & Jev Adjudication Report](#independent-architecture-review--jev-adjudication-report)
+11. [Empirical Jev System One Benchmark Metrics](#empirical-jev-system-one-benchmark-metrics)
+12. [Empirical Multi-Turn Case Study](#empirical-multi-turn-case-study)
+13. [The Three-Pillar Token Optimization Architecture](#the-three-pillar-token-optimization-architecture)
+14. [Granular Module Breakdown](#granular-module-breakdown)
+15. [Large Codebase & 500+ MB Dataset Scalability](#large-codebase--500-mb-dataset-scalability)
+16. [Installation & Multi-Engine Setup](#installation--multi-engine-setup)
+17. [CLI Reference](#cli-reference)
+18. [Deterministic Verification Suite](#deterministic-verification-suite)
+19. [License](#license)
 
 ---
 
@@ -73,6 +76,37 @@ flowchart LR
 | **Evaluation Latency** | Local AST/regex: <1.2ms; Jev semantic calls: 200ms - 600ms | 10s - 30s per generative multi-token turn |
 | **Verification Authority** | Ground-truth disk state, git worktree diffs, test exit codes | Model self-reflection and context-dependent belief |
 | **Cost Profile** | Local heuristics: $0.00; Jev calls: sub-cent micro-transactions | Full context-window frontier LLM billing |
+
+---
+
+## The 7-Pillars Precision Context Architecture
+
+Rather than dumping monolithic multi-megabyte log files or unparsed transcripts into the evaluator, AgentAegis extracts a surgical **7-Pillars Precision Context Envelope** in sub-5ms at **0 LLM wire tokens** via [`harness/state-collector.js`](file:///C:/Users/User/Desktop/jev-mcp/harness/state-collector.js):
+
+```mermaid
+flowchart TD
+    subgraph SevenPillars["The 7-Pillars Precision Context Architecture"]
+        P1["Pillar 1: User Task Intent\n(Zero-LLM Native Transcript Parser)"]
+        P2["Pillar 2: Proposed Action Payload\n(Enriched with Runtime OS/Node Metadata)"]
+        P3["Pillar 3: Target Working File AST\n(Virtual Shadow Buffer Slice, <1,500 chars)"]
+        P4["Pillar 4: Workspace Git Delta\n(git status + diff-stat + git diff -U2)"]
+        P5["Pillar 5: Causal Trajectory\n(SHA-256 Fingerprinted Tool History + Stderr)"]
+        P6["Pillar 6: Verification Test Contract\n(Ecosystem Runner + last_test_passed Status)"]
+        P7["Pillar 7: Authorization Boundary\n(Workspace Root + Path Whitelist + Denylist)"]
+    end
+    SevenPillars -->|"buildAdaptiveEnvelope()"| Env["Adaptive Context Envelope\n(500 - 2,500 Tokens Max)"]
+    Env --> Jev["TypeSafe AI Jev System One\n(/v1/systemone)"]
+```
+
+| Pillar | Precision Context Dimension | Collection Mechanism | Bounded Payload Ceiling |
+| :--- | :--- | :--- | :--- |
+| **Pillar 1** | **User Task Intent** | Native deterministic regex parsing of session JSONL transcript (`extractUserGoal()`). Strips system XML/metadata tags; captures verbatim human prompt. Zero LLM inference. | 1,500 chars |
+| **Pillar 2** | **Proposed Action & Actuator Payload** | Tool name and arguments enriched with runtime environment metadata (`platform`, `node_version`, `arch`). Large values truncated with SHA-256 fingerprinting. | 250 chars per arg + SHA-256 |
+| **Pillar 3** | **Target Working File AST** | Clean structural shadow buffer reconstructed in memory via `reconstructShadowBuffer()`. Captures clean source code without diff markers. | 1,500 chars |
+| **Pillar 4** | **Workspace Git Delta** | `git status --porcelain`, `git diff --stat`, and `git diff -U2` excluding lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`, `poetry.lock`). Multi-file consistent. | Adaptive (1,200 - 2,500 chars) |
+| **Pillar 5** | **Causal Trajectory** | Bounded rolling history of prior tool invocations compressed into compact SHA-256 fingerprints (`replace_file_content:auth.js:sha256(7f8a3c21)`) + bounded compiler stderr tail. | 5 actions + 1,200 chars stderr |
+| **Pillar 6** | **Verification Test Contract** | Manifest ecosystem, detected test runner command, and verified `last_test_passed` ground-truth status from PostToolUse telemetry. | Full contract vector |
+| **Pillar 7** | **Authorization Boundary** | Workspace root directory, allowed access scopes, and restricted command patterns (`rm -rf /`, `git reset --hard`, `DROP DATABASE`). | Policy object |
 
 ---
 
@@ -147,7 +181,24 @@ Extracts verifiable claims from the agent's completion statement via `extractVer
 
 #### Stage 2: Jev System One Semantic Gate
 - Submits structured test output, git diff statistics, and verified telemetry to TypeSafe AI System One (`/v1/systemone`).
-- Requires Bayesian probability threshold (P ge 0.85) for final gate unlocking.
+- Requires Bayesian probability threshold (P >= 0.85) for final gate unlocking.
+
+---
+
+## Deterministic Policy Pre-Gates & Single Gate Authority
+
+To guarantee uncompromised system safety and eliminate ambiguity for downstream autonomous pipelines, AgentAegis enforces two architectural invariants:
+
+### 1. Synchronous Policy Pre-Gate (< 1ms)
+Before any asynchronous task, test runner spawn, or external Jev API call occurs, [`acceptance-gate.js`](file:///C:/Users/User/Desktop/jev-mcp/harness/acceptance-gate.js) and [`interceptor.js`](file:///C:/Users/User/Desktop/jev-mcp/harness/interceptor.js) execute synchronous regex scans:
+- **`RESTRICTED_PATTERNS`**: Detects dangerous system operations (`rm -rf`, `git reset`, `DROP DATABASE`, `DELETE FROM`, `TRUNCATE`).
+- **Immediate Hard Veto**: Violations trigger an instant return with `passed: false, hardVeto: true, probability: 0.0`. Jev is never consulted for explicitly prohibited operations.
+
+### 2. Single Authoritative Decision Metric (`gate_confidence`)
+Earlier iterations exposed overlapping confidence values (`confidence`, `probabilities`, and `rubric_score`). AgentAegis now standardizes on a single authoritative gate signal:
+- **`gate_confidence`**: A single composite floating-point value `[0.0, 1.0]` derived from the Jev noul posterior probability.
+- Downstream automation and CLI commands (`aegis decisions`) act exclusively on `gate_confidence >= 0.85`.
+- Raw model usage, model name, and individual choice probabilities are designated strictly as supplementary audit metadata.
 
 ---
 
@@ -226,6 +277,23 @@ AgentAegis implements an asymmetric bipartite fail-safe model: destructive opera
 | **Buffer Overflow (>10MB)** | Test Suite Execution | Gate Rejection | `1` | `isMaxBuffer: true, passed: false` |
 | **Cycle Threshold Reached (>=3)** | Repetitive Low-Variance Edits | Circuit Breaker Tripped | `2` | `status: TRIPPED_CYCLE_BREAKER` |
 | **Core Laws AST Violation** | Code Synthesis (`write_to_file`) | AST Linter Veto | `2` | `violations: [BANNED_PATTERN]` |
+
+---
+
+## Independent Architecture Review & Jev Adjudication Report
+
+The AgentAegis harness was subjected to an adversarial architectural review (`abc.txt`) auditing six critical failure modes across context extraction, AST framing, multi-file consistency, test rerun verification, confidence score calibration, and authorization timing.
+
+Each issue was formally submitted to TypeSafe AI Jev System One (`jev-1.13.0`) for adjudication, followed by independent verification by an auditor subagent (`loop-verifier`):
+
+| # | Review Point | Jev Verdict | Noul Score | Architectural Finding & Resolution |
+| :--- | :--- | :--- | :--- | :--- |
+| **1** | Pillar 1 secretly requires an LLM for synthesis | **Not a Defect** | **0.96** (True) | **Verified Zero-Wire-Token Capture**: Code inspection confirms `extractClaudeCodePrompt()` and `extractAntigravityPrompt()` in `state-collector.js` perform pure deterministic regex and JSON parsing directly from transcripts. Zero LLM calls. |
+| **2** | Pillar 3 is mislabeled as diff rather than AST | **Not a Defect** | **0.73** (True) | **Structural Shadow Buffer Role Verified**: Documented in module header as virtual shadow buffer slice. In-memory working file content is clean JS source code, distinct from unified git diff. |
+| **3** | Pillar 4 git status shows 2 files, diff shows 1 | **Mock Defect** | **0.92** (True) | **Multi-File Consistency Enforced**: Distinct purposes verified. `mock-webapp-scenario.mjs` updated to include both backend route (`server/routes/users.js`) and frontend consumer (`frontend/src/api/users.js`) across status, diffstat, and unified diff. |
+| **4** | Verdict is probabilistic without test re-run | **Valid Defect** | **0.46** (False) | **Decoupled Verification Lifecycle**: Pre-tool vetting (Phase A) and post-tool acceptance gating (Phase B) are strictly decoupled. Stage 1 executes deterministic test suite (`npm test`, exit code 0) before Stage 2 Jev completion check. |
+| **5** | Inconsistent confidence numbers (0.89 vs 0.94 vs 0.70) | **Valid Defect** | **0.30** (False) | **Standardized Single Gate Metric**: Standardized on `gate_confidence` as single authoritative float in `acceptance-gate.js` and CLI logs. Model probability and usage designated as supplementary audit metadata. |
+| **6** | Authorization evaluated too late | **Valid Defect** | **0.50** (Borderline) | **Synchronous Policy Pre-Gate**: Synchronous `RESTRICTED_PATTERNS` regex pre-gate added at top of `verifyAcceptanceGate()`, executing in `<1ms` before any async operations or Jev queries. |
 
 ---
 
@@ -414,6 +482,20 @@ aegis verify
 # or alias
 aegis gate
 
+# Inspect cognitive decision audit summary (approved vs vetoed)
+aegis decisions
+# or alias
+aegis tracker
+
+# Inspect detailed 7-pillars precision context for every decision
+aegis decisions --detail
+
+# Output decision logs as structured JSON
+aegis decisions --json
+
+# Clear active workspace decision history
+aegis decisions --clear
+
 # Inspect active session history and loop circuit breaker status
 aegis check-cycle
 
@@ -423,11 +505,20 @@ aegis test:veto
 # Run dynamic harness test suite (11/11 modules)
 npm test
 
+# Run 7-Pillar Precision Context test suite (32/32 assertions)
+node test/test-seven-pillars.js
+
+# Run real web app missing payload scenario with live Jev adjudication
+node test/mock-webapp-scenario.mjs
+
 # Run Aegis V2.0 mitigation and archetype test suite (5/5 groups)
 npm run test:v2
 
 # Run enhancement and bipartite security test suite (29/29 tests)
 npm run test:enhancements
+
+# Run persistent decision tracker unit test suite (8/8 tests)
+npm run test:tracker
 ```
 
 ### CLI Options
@@ -439,6 +530,9 @@ npm run test:enhancements
 | `--cursor` | None | Provision Cursor rule configuration (`.cursor/rules/jev-harness.mdc`) |
 | `--antigravity` | None | Provision Antigravity hooks (`.agents/hooks.json`) |
 | `--target-dir` | `<path>` | Specify target directory (default: current working directory) |
+| `--detail, --verbose` | None | Display full 7-pillars context, diffs, and AST in decision logs |
+| `--json` | None | Output decision audit trail as machine-readable JSON |
+| `--clear` | None | Truncate and reset the persistent decision audit log |
 | `--dry-run` | None | Simulate configuration generation without writing files to disk |
 | `-v, --version` | None | Output AgentAegis package version |
 | `-h, --help` | None | Display CLI command reference and options |
@@ -453,17 +547,20 @@ AgentAegis enforces a strict 100% green test policy. Execute all automated verif
 # 1. Dynamic Harness Verification Suite (11/11 Modules)
 npm test
 
-# 2. Aegis V2.0 Mitigation & Multi-Archetype Suite (5/5 Groups)
+# 2. 7-Pillars Precision Context Suite (32/32 Assertions)
+node test/test-seven-pillars.js
+
+# 3. Aegis V2.0 Mitigation & Multi-Archetype Suite (5/5 Groups)
 npm run test:v2
 
-# 3. Enhancement & Bipartite Security Suite (29/29 Tests)
+# 4. Enhancement & Bipartite Security Suite (29/29 Tests)
 npm run test:enhancements
 
-# 4. Interactive Walkthrough Test Suite (12/12 Tests, Zero Emojis)
-node walkthrough/test/walkthrough.test.js
+# 5. Persistent Decision Tracker Test Suite (8/8 Tests)
+npm run test:tracker
 
-# Run all test suites in sequence
-npm run test:all
+# 6. Interactive Walkthrough Test Suite (12/12 Tests, Zero Emojis)
+node walkthrough/test/walkthrough.test.js
 ```
 
 ---

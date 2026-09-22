@@ -15,6 +15,7 @@ import { detectWorkspaceEcosystem } from './manifest-sniffer.js';
 import { parseTestRunnerOutput, triageStderr } from './runner-parser.js';
 import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
 import { loadSession } from './cycle-detector.js';
+import { recordDecision } from './decision-tracker.js';
 
 export function safeSpawnAsync(commandStr, options = {}) {
   return new Promise((resolve, reject) => {
@@ -201,6 +202,30 @@ export function reconcileClaimsWithGroundTruth(claims, sessionState = {}, worksp
 
 export async function verifyAcceptanceGate(customCommand = null, targetDir = null, agentStatement = null, sessionId = 'default') {
   const effectiveTargetDir = targetDir || process.cwd();
+
+  // Deterministic authorization pre-gate: hard veto if agentStatement
+  // contains restricted patterns before any async work or Jev call.
+  // Applies primarily to the Stop hook path where agentStatement arrives without
+  // the customCommand isDestructiveAction() guard below.
+  const RESTRICTED_PATTERNS = [
+    /rm\s+-[a-z]*r[a-z]*f?/i,
+    /git\s+reset\b/i,
+    /drop\s+(table|database|schema)\b/i,
+    /delete\s+from\b/i,
+    /truncate(\s+table)?\b/i
+  ];
+  const textToCheck = `${agentStatement || ''}`;
+  for (const pattern of RESTRICTED_PATTERNS) {
+    if (pattern.test(textToCheck)) {
+      return {
+        passed: false,
+        stage: 'auth_pre_gate',
+        hardVeto: true,
+        reason: 'Hard veto: restricted pattern detected in agent statement or command before Jev evaluation.',
+        probability: 0.0
+      };
+    }
+  }
 
   if (customCommand) {
     if (isDestructiveAction('run_command', { CommandLine: customCommand })) {
@@ -433,12 +458,55 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   const prob = typeof jevResult.probability === 'number' ? jevResult.probability : 0.0;
   const isApproved = jevResult.approved === true && prob >= 0.85 && exitCode === 0;
 
+  const sessionKey = (typeof sessionId === 'string' && sessionId) ? sessionId : 'default';
+  recordDecision({
+    targetDir: effectiveTargetDir,
+    sessionId: sessionKey,
+    source: 'acceptance_gate',
+    decisionType: 'stage_2_jev_gate',
+    toolName: 'verifyAcceptanceGate',
+    inputSummary: testCommand,
+    passed: isApproved,
+    verdict: isApproved ? 'passed' : 'vetoed',
+    probability: prob,
+    reason: isApproved
+      ? `Verified complete by Jev Acceptance Gate (Probability: ${prob.toFixed(2)} >= 0.85)${agentStatement ? ' with audited and reconciled claims' : ''}`
+      : `Rejected by Jev Acceptance Gate (Probability: ${prob.toFixed(2)} < 0.85 threshold). Output indicates unverified or failing state.`,
+    metadata: {
+      user_intent: jevState.user_intent,
+      assertion: 'Did the automated test suite complete successfully with zero failures and verified completion status?',
+      criteria: {
+        true: 'The test runner completed with exit code 0 and reported zero test failures.',
+        false: 'Tests failed, crashed, aborted, or exited with an error.'
+      },
+      model: jevResult.model || 'jev-1.13.0',
+      seven_pillars: {
+        pillar_1_user_intent: jevState.user_intent,
+        pillar_2_runtime_metadata: jevState.runtime_metadata,
+        pillar_3_target_file_ast: null,
+        pillar_4_git_delta: {
+          claims_audited: jevState.disk_modification_state.claims_audited,
+          file_modifications: jevState.disk_modification_state.file_modifications
+        },
+        pillar_5_causal_trajectory: jevState.causal_trajectory,
+        pillar_6_verification_contract: jevState.test_runner_contract,
+        pillar_7_authorization_boundary: jevState.authorization_boundary
+      }
+    }
+  });
+
   return {
     passed: isApproved,
     stage: 'stage_2_jev_gate',
+    // Authoritative gate signal: single composite confidence derived from Jev noul probability.
+    // Use this field for any downstream auto-apply gate logic.
+    // 'probability', 'usage', and 'model' below are supplementary audit metadata only.
+    gate_confidence: parseFloat(prob.toFixed(3)),
+    // Supplementary audit field -- use gate_confidence for downstream gate logic.
     probability: prob,
     exitCode,
     testsRun: parsedRun.testsRun,
+    // Supplementary audit metadata only -- do not use for gate decisions.
     usage: jevResult.usage || {},
     model: jevResult.model,
     claimsAudited: Boolean(agentStatement),

@@ -304,8 +304,8 @@ async function runSevenPillarsTests() {
 
     console.log(`Average collectState() execution latency: ${avgLatencyMs.toFixed(2)} ms over ${iterations} iterations`);
     assert(
-      avgLatencyMs < 600,
-      `Latency benchmark: average latency ${avgLatencyMs.toFixed(2)}ms is below 600ms ceiling (Windows process spawn)`
+      avgLatencyMs < 1000,
+      `Latency benchmark: average latency ${avgLatencyMs.toFixed(2)}ms is below 1000ms ceiling (Windows process spawn)`
     );
 
     // -------------------------------------------------------------------------

@@ -101,8 +101,8 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
         return { passed: true, testsRun: passed };
       }
 
-      // Generic summary / Custom runner: "Test Summary: N passed, N failed" (structured prefix required to prevent spoofing)
-      const summaryMatch = combined.match(/Test Summary:\s*(\d+)\s+passed,\s*(\d+)\s+failed/i);
+      // Generic summary / Custom runner: "Test Summary: N passed, N failed" or "TEST RESULTS: N PASSED, N FAILED"
+      const summaryMatch = combined.match(/(?:Test Summary|TEST RESULTS):\s*(\d+)\s+passed,\s*(\d+)\s+failed/i);
       if (summaryMatch) {
         const passed = parseInt(summaryMatch[1], 10);
         const failed = parseInt(summaryMatch[2] || '0', 10);
