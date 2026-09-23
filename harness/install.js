@@ -280,8 +280,17 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
     ? (relPath.startsWith('.') ? relPath : `./${relPath}`)
     : interceptorPath;
 
-  const preToolCmd = `node "${execPath}" --engine antigravity pre-tool`;
-  const stopCmd = `node "${execPath}" --engine antigravity verify-gate`;
+  // On Windows, Antigravity resolves relative paths relative to .agents/.
+  // Wrapping relative paths in quotes (e.g., "node \"../harness/interceptor.js\"")
+  // causes Antigravity's Windows resolver to create a path with embedded quotes:
+  // C:\...\.agents\"..\harness\interceptor.js", which throws Cannot find module.
+  // Therefore, relative paths or unspaced paths must NOT have quotes.
+  const cleanExecPath = (!execPath.includes(' ') || execPath.startsWith('.'))
+    ? execPath.replace(/^["']|["']$/g, '')
+    : `"${execPath}"`;
+
+  const preToolCmd = `node ${cleanExecPath} --engine antigravity pre-tool`;
+  const stopCmd = `node ${cleanExecPath} --engine antigravity verify-gate`;
 
   const updated = { ...existing };
   
@@ -306,6 +315,24 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
 
   // Stop is a flat handler list
   updated[HOOK_NAME].Stop = [
+    {
+      type: 'command',
+      command: stopCmd
+    }
+  ];
+
+  // Also maintain top-level hooks for universal backward compatibility
+  if (!updated.hooks || typeof updated.hooks !== 'object') {
+    updated.hooks = {};
+  }
+  updated.hooks.PreToolUse = [
+    {
+      matcher: '.*',
+      command: preToolCmd,
+      hooks: [{ type: 'command', command: preToolCmd }]
+    }
+  ];
+  updated.hooks.Stop = [
     {
       type: 'command',
       command: stopCmd
@@ -499,8 +526,11 @@ export const detectEngine = (targetDir) => detectInstalledEngines(targetDir)[0] 
 
 export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravity', interceptorPath = null) {
   const resolvedInterceptor = interceptorPath || path.resolve(__dirname, 'interceptor.js');
-  const preToolCmd = `node "${resolvedInterceptor}" --engine ${engine} pre-tool`;
-  const stopCmd = `node "${resolvedInterceptor}" --engine ${engine} verify-gate`;
+  const cleanInterceptor = (engine === 'antigravity' && (!resolvedInterceptor.includes(' ') || resolvedInterceptor.startsWith('.')))
+    ? resolvedInterceptor.replace(/^["']|["']$/g, '')
+    : `"${resolvedInterceptor}"`;
+  const preToolCmd = `node ${cleanInterceptor} --engine ${engine} pre-tool`;
+  const stopCmd = `node ${cleanInterceptor} --engine ${engine} verify-gate`;
 
   const config = JSON.parse(JSON.stringify(existingConfig || {}));
   const usesNestedHooks = config.hooks && typeof config.hooks === 'object';

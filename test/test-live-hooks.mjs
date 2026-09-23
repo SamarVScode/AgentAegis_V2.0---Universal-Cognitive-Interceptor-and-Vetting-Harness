@@ -65,8 +65,9 @@ try {
 assert(claudeVetoCaught, 'Claude hook must block rm -rf with exit code 2');
 
 // 6. Test live execution of Antigravity pre-tool hook with benign input
+const agWorkingDir = path.join(tmpDir, '.agents');
 execSync(agPreCmd, {
-  cwd: tmpDir,
+  cwd: agWorkingDir,
   input: JSON.stringify({ toolCall: { name: 'view_file', args: { AbsolutePath: 'src/index.js' } } }),
   stdio: 'pipe'
 });
@@ -76,7 +77,7 @@ console.log('6. Antigravity benign pre-tool execution: SUCCESS (exit 0)');
 let agVetoCaught = false;
 try {
   execSync(agPreCmd, {
-    cwd: tmpDir,
+    cwd: agWorkingDir,
     input: JSON.stringify({ toolCall: { name: 'run_command', args: { CommandLine: 'rm -rf /' } } }),
     stdio: 'pipe'
   });
