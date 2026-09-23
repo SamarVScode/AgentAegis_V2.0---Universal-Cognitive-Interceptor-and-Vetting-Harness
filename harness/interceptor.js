@@ -155,17 +155,23 @@ export async function readStdinJson(timeoutMs = null) {
  * Main lifecycle dispatcher
  */
 export async function runInterceptor() {
-  const cwdHash = createHash('sha256').update(process.cwd()).digest('hex').slice(0, 8);
+  // Read stdin once before mode dispatch so session_id and workspacePaths can be extracted.
+  const stdinPayload = await readStdinJson();
+  let effectiveWorkspace = (stdinPayload.workspacePaths && stdinPayload.workspacePaths[0])
+    ? path.resolve(stdinPayload.workspacePaths[0])
+    : process.cwd();
+  if (['.agents', '.claude', '.cursor'].includes(path.basename(effectiveWorkspace))) {
+    effectiveWorkspace = path.dirname(effectiveWorkspace);
+  }
+
+  const cwdHash = createHash('sha256').update(effectiveWorkspace).digest('hex').slice(0, 8);
   let sessionFromFile = null;
   try {
-    const sessionFilePath = path.join(process.cwd(), '.aegis-session');
+    const sessionFilePath = path.join(effectiveWorkspace, '.aegis-session');
     if (fs.existsSync(sessionFilePath)) {
       sessionFromFile = fs.readFileSync(sessionFilePath, 'utf8').trim() || null;
     }
   } catch {}
-  // Read stdin once before mode dispatch so session_id can be extracted.
-  // Each mode branch receives stdinPayload directly to avoid consuming stdin twice.
-  const stdinPayload = await readStdinJson();
   // stdinPayload.session_id is stable across all Claude Code hook invocations
   // (PreToolUse, PostToolUse, Stop) in one session. Eliminates ppid fragmentation.
   const sessionId = process.env.AEGIS_SESSION_ID ||
@@ -180,7 +186,7 @@ export async function runInterceptor() {
   // HOOK 0: PRE-INVOCATION / USER PROMPT EARLY GUARDRAIL
   // -------------------------------------------------------------------------
   if (mode === 'pre-invocation' || mode === 'preInvocation' || mode === 'user-prompt' || mode === 'UserPrompt') {
-    if (!isApiKeyConfigured(process.cwd())) {
+    if (!isApiKeyConfigured(effectiveWorkspace)) {
       const warningMsg = '[AEGIS GUARD FATAL]: TYPESAFE_API_KEY is not configured or missing in .env. Jev System One cognitive interceptor cannot operate without a valid API key. Please configure TYPESAFE_API_KEY in .env before issuing tasks.';
       console.error(warningMsg);
       if (engine === 'antigravity') {
@@ -266,11 +272,12 @@ export async function runInterceptor() {
     const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
 
     // Step 0: Early API Key Fail-Closed Guardrail (Blocks all tool actions if key is missing)
-    if (!isApiKeyConfigured(process.cwd())) {
+    if (!isApiKeyConfigured(effectiveWorkspace)) {
       const missingKeyMsg = '[AEGIS GUARD FATAL]: TYPESAFE_API_KEY is not configured or missing in .env. Jev cognitive interceptor requires a valid API key to operate safely. All tool executions are blocked.';
       console.error(missingKeyMsg);
       recordDecision({
         sessionId,
+        targetDir: effectiveWorkspace,
         source: 'api_key_guard',
         decisionType: 'missing_api_key_veto',
         toolName,
@@ -417,7 +424,7 @@ export async function runInterceptor() {
           rollingHistory: session.rollingHistory || [],
           lastStderr: session.lastStderr || '',
           lastTestPassed: session.lastTestPassed ?? null,
-          authorization: { workspace_root: process.cwd(), role: 'developer' },
+          authorization: { workspace_root: effectiveWorkspace, role: 'developer' },
           runtimeMetadata: { platform: process.platform, node_version: process.version, arch: process.arch }
         };
 
@@ -436,6 +443,7 @@ export async function runInterceptor() {
 
         recordDecision({
           sessionId,
+          targetDir: effectiveWorkspace,
           source: 'jev_system_one',
           decisionType: 'artifact_semantic_gate',
           toolName,
@@ -480,7 +488,7 @@ export async function runInterceptor() {
           rollingHistory: session.rollingHistory || [],
           lastStderr: session.lastStderr || '',
           lastTestPassed: session.lastTestPassed ?? null,
-          authorization: { workspace_root: process.cwd(), role: 'developer' },
+          authorization: { workspace_root: effectiveWorkspace, role: 'developer' },
           runtimeMetadata: { platform: process.platform, node_version: process.version, arch: process.arch }
         };
 
@@ -495,6 +503,7 @@ export async function runInterceptor() {
 
         recordDecision({
           sessionId,
+          targetDir: effectiveWorkspace,
           source: 'jev_system_one',
           decisionType: 'destructive_vetting',
           toolName,
@@ -555,6 +564,7 @@ export async function runInterceptor() {
     if (process.env.AEGIS_FULL_AUDIT === 'true') {
       recordDecision({
         sessionId,
+        targetDir: effectiveWorkspace,
         source: 'interceptor',
         decisionType: 'pre_tool_fastpath_passed',
         toolName,
@@ -636,7 +646,7 @@ export async function runInterceptor() {
     const stdinData = stdinPayload;
     const customCmd = arg1 || stdinData.command || stdinData.customCommand || null;
     const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
-    const gateResult = await verifyAcceptanceGate(customCmd, process.cwd(), agentStatement, sessionId);
+    const gateResult = await verifyAcceptanceGate(customCmd, effectiveWorkspace, agentStatement, sessionId);
 
     // Stage 2 decision already recorded in verifyAcceptanceGate
 

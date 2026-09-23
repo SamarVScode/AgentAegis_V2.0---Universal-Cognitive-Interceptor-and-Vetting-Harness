@@ -309,18 +309,14 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   const stopCmd = `node ${cleanExecPath} --engine antigravity verify-gate`;
 
   const updated = { ...existing };
-  
-  // Format as official Antigravity named hook configuration
-  const HOOK_NAME = 'aegis-guard';
-  if (!updated[HOOK_NAME] || typeof updated[HOOK_NAME] !== 'object') {
-    updated[HOOK_NAME] = {};
+  delete updated['aegis-guard'];
+
+  // Antigravity official specification: top-level "hooks" containing typed hook events
+  if (!updated.hooks || typeof updated.hooks !== 'object') {
+    updated.hooks = {};
   }
-
-  // PreInvocation is a flat handler list
-  updated[HOOK_NAME].PreInvocation = [{ type: 'command', command: preInvocationCmd }];
-
-  // PreToolUse requires grouped matcher structure
-  updated[HOOK_NAME].PreToolUse = [
+  updated.hooks.PreInvocation = [{ type: 'command', command: preInvocationCmd }];
+  updated.hooks.PreToolUse = [
     {
       matcher: '.*',
       hooks: [
@@ -329,27 +325,6 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
           command: preToolCmd
         }
       ]
-    }
-  ];
-
-  // Stop is a flat handler list
-  updated[HOOK_NAME].Stop = [
-    {
-      type: 'command',
-      command: stopCmd
-    }
-  ];
-
-  // Also maintain top-level hooks for universal backward compatibility
-  if (!updated.hooks || typeof updated.hooks !== 'object') {
-    updated.hooks = {};
-  }
-  updated.hooks.PreInvocation = [{ type: 'command', command: preInvocationCmd }];
-  updated.hooks.PreToolUse = [
-    {
-      matcher: '.*',
-      command: preToolCmd,
-      hooks: [{ type: 'command', command: preToolCmd }]
     }
   ];
   updated.hooks.Stop = [

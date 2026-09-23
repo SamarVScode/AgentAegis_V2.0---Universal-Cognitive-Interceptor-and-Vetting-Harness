@@ -201,7 +201,10 @@ export function reconcileClaimsWithGroundTruth(claims, sessionState = {}, worksp
 }
 
 export async function verifyAcceptanceGate(customCommand = null, targetDir = null, agentStatement = null, sessionId = 'default') {
-  const effectiveTargetDir = targetDir || process.cwd();
+  let effectiveTargetDir = targetDir || process.cwd();
+  if (['.agents', '.claude', '.cursor'].includes(path.basename(effectiveTargetDir))) {
+    effectiveTargetDir = path.dirname(effectiveTargetDir);
+  }
 
   // Deterministic authorization pre-gate: hard veto if agentStatement
   // contains restricted patterns before any async work or Jev call.

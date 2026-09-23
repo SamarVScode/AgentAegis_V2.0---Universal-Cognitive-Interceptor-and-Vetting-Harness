@@ -14,7 +14,10 @@ export const DEFAULT_AUDIT_FILENAME = 'decision-audit.jsonl';
  * Resolves the root audit directory for persistent logs (.aegis or session-specific)
  */
 export function getAuditLogPath(targetDir = process.cwd(), sessionId = null) {
-  const resolvedDir = path.resolve(String(targetDir).replace(/^["']|["']$/g, ''));
+  let resolvedDir = path.resolve(String(targetDir).replace(/^["']|["']$/g, ''));
+  if (['.agents', '.claude', '.cursor'].includes(path.basename(resolvedDir))) {
+    resolvedDir = path.dirname(resolvedDir);
+  }
   const aegisDir = path.join(resolvedDir, '.aegis');
   if (!fs.existsSync(aegisDir)) {
     try {
@@ -29,6 +32,9 @@ export function getAuditLogPath(targetDir = process.cwd(), sessionId = null) {
  */
 export function findAuditLogPath(targetDir = process.cwd()) {
   let curr = path.resolve(String(targetDir).replace(/^["']|["']$/g, ''));
+  if (['.agents', '.claude', '.cursor'].includes(path.basename(curr))) {
+    curr = path.dirname(curr);
+  }
   const root = path.parse(curr).root;
   while (curr) {
     const candidate = path.join(curr, '.aegis', DEFAULT_AUDIT_FILENAME);
