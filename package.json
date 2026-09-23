@@ -1,6 +1,6 @@
 {
   "name": "@samarvscode/aegis",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "description": "AgentAegis — Universal Cognitive Interceptor & Vetting Harness for Autonomous Coding Agents",
   "main": "index.js",
   "type": "module",

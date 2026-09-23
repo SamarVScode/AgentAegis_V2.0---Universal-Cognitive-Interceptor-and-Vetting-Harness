@@ -1,6 +1,7 @@
 # AgentAegis (`@samarvscode/aegis`)
 ## Universal Cognitive Interceptor & Vetting Harness for Autonomous Coding Agents
 
+[![Version](https://img.shields.io/badge/Version-2.1.0-blue.svg)](file:///C:/Users/User/Desktop/jev-mcp/package.json)
 [![Decision Engine](https://img.shields.io/badge/Decision%20Engine-typesafe%2Fjev--1.13.0-blue.svg)](https://typesafe.ai)
 [![Verification Suite](https://img.shields.io/badge/Verification-11%2F11%20Modules%20Pass-emerald.svg)](file:///C:/Users/User/Desktop/jev-mcp/test/test-dynamic-harness.js)
 [![Live Hooks](https://img.shields.io/badge/Live%20Hooks-100%25%20Pass-emerald.svg)](file:///C:/Users/User/Desktop/jev-mcp/test/test-live-hooks.mjs)
@@ -199,6 +200,13 @@ Earlier iterations exposed overlapping confidence values (`confidence`, `probabi
 - **`gate_confidence`**: A single composite floating-point value `[0.0, 1.0]` derived from the Jev noul posterior probability.
 - Downstream automation and CLI commands (`aegis decisions`) act exclusively on `gate_confidence >= 0.85`.
 - Raw model usage, model name, and individual choice probabilities are designated strictly as supplementary audit metadata.
+
+### 3. Shift-Left Per-Artifact Semantic Gating (V2.1 Upgrade)
+In addition to late acceptance gating, AgentAegis V2.1 introduces **Shift-Left Per-Artifact Semantic Gating** (`Step 3b` in `interceptor.js`), opt-in via `AEGIS_SHIFT_LEFT=true`:
+- **Moment-of-Creation Vetting**: Whenever an agent writes or modifies a file artifact (`write_to_file`, `replace_file_content`), the harness constructs the 7-Pillars Precision Context envelope and submits it to TypeSafe AI System One (`/v1/systemone`).
+- **Point-of-Origin Veto**: If Jev detects fatal syntax errors, broken logic, or corrupt character encoding, the file write is vetoed immediately (`Exit Code 2`), forcing the agent to fix the file before writing dependent downstream code.
+- **Full-Spectrum Audit Logging (`AEGIS_FULL_AUDIT=true`)**: Captures 100% of decisions — both local fastpath passes and semantic Jev calls — along with the exact 7-Pillars inputs into `.aegis/decision-audit.jsonl`.
+- **Empirical Validation**: See [`EMPIRICAL_AUDIT_REPORT.md`](file:///C:/Users/User/Desktop/jev-mcp/EMPIRICAL_AUDIT_REPORT.md) for live case study telemetry, full 17-decision audit logs, and token comparisons.
 
 ---
 

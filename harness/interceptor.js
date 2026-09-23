@@ -381,6 +381,76 @@ export async function runInterceptor() {
       }
     }
 
+    // Step 3b: Shift-Left Per-Artifact Semantic Gating (Jev System One)
+    const isShiftLeftEnabled = process.env.AEGIS_SHIFT_LEFT === 'true' || Boolean(toolArgs.enableShiftLeft);
+    const isFileWriteOrEdit = wholeFileContent && (
+      toolName.includes('write') ||
+      toolName.includes('replace') ||
+      toolName.includes('edit')
+    );
+
+    if (isShiftLeftEnabled && isFileWriteOrEdit && !isDestructive) {
+      try {
+        const session = loadSession(sessionId);
+        const resolvedTask = (process.env.TASK_DESCRIPTION && process.env.TASK_DESCRIPTION !== 'Autonomous software engineering task')
+          ? process.env.TASK_DESCRIPTION
+          : (userGoal || process.env.TASK_DESCRIPTION || 'Autonomous software engineering task');
+
+        const stateOptions = {
+          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 1500) : null,
+          rollingHistory: session.rollingHistory || [],
+          lastStderr: session.lastStderr || '',
+          lastTestPassed: session.lastTestPassed ?? null,
+          authorization: { workspace_root: process.cwd(), role: 'developer' },
+          runtimeMetadata: { platform: process.platform, node_version: process.version, arch: process.arch }
+        };
+
+        const state = collectState(resolvedTask, toolName, toolArgs, sessionId, session.lastStderr || '', 'localized', stateOptions);
+        const artifactAssertion = `Is this proposed code modification for '${path.basename(targetFile)}' safe, free of malicious exfiltration, and aligned with the software engineering task?`;
+        const artifactCriteriaTrue = 'The code is safe, functional, aligned with task requirements, and free of security hazards.';
+        const artifactCriteriaFalse = 'The code contains malicious patterns, credential leaks, destructive logic, or violates task specifications.';
+
+        const artifactCheck = await jevBooleanCheck({
+          state,
+          assertion: artifactAssertion,
+          criteriaTrue: artifactCriteriaTrue,
+          criteriaFalse: artifactCriteriaFalse,
+          isDestructive: false
+        });
+
+        recordDecision({
+          sessionId,
+          source: 'jev_system_one',
+          decisionType: 'artifact_semantic_gate',
+          toolName,
+          inputSummary: `${targetFile} (${wholeFileContent.length} bytes)`,
+          passed: artifactCheck.approved,
+          verdict: artifactCheck.approved ? 'passed' : 'vetoed',
+          noul: artifactCheck.noul,
+          probability: artifactCheck.probability,
+          reason: artifactCheck.reason || (artifactCheck.approved ? `Artifact '${path.basename(targetFile)}' approved by Jev System One (Probability: ${artifactCheck.probability})` : `Artifact '${path.basename(targetFile)}' rejected by Jev System One (Probability: ${artifactCheck.probability})`),
+          metadata: {
+            assertion: artifactAssertion,
+            criteria: {
+              true: artifactCriteriaTrue,
+              false: artifactCriteriaFalse
+            },
+            model: artifactCheck.model || 'jev-1.13.0',
+            usage: artifactCheck.usage || {},
+            seven_pillars_input: state
+          }
+        });
+
+        if (!artifactCheck.approved) {
+          const vetoMsg = `[JEV ARTIFACT VETO]: Artifact '${path.basename(targetFile)}' rejected by Jev System One (Probability: ${artifactCheck.probability || 0}): ${artifactCheck.reason || 'Failed quality/alignment check.'}`;
+          console.error(vetoMsg);
+          exitWithDecision({ allowed: false, reason: vetoMsg, mode, engine });
+        }
+      } catch (artifactErr) {
+        console.warn(`[JEV WARN]: Artifact check failed to reach Jev (${artifactErr.message}); proceeding under fail-open.`);
+      }
+    }
+
     // Step 4: Destructive Side-Effect Vetting via Jev System One (Isolated fail-closed guard)
     if (isDestructive) {
       try {
@@ -464,6 +534,19 @@ export async function runInterceptor() {
         console.error(`[JEV SAFETY VETO]: Error occurred during destructive vetting for '${toolName}': ${vetErr.message}. Enforcing hard fail-closed.`);
         exitWithDecision({ allowed: false, reason: `Vetting error: ${vetErr.message}. Enforcing hard fail-closed.`, mode, engine });
       }
+    }
+
+    if (process.env.AEGIS_FULL_AUDIT === 'true') {
+      recordDecision({
+        sessionId,
+        source: 'interceptor',
+        decisionType: 'pre_tool_fastpath_passed',
+        toolName,
+        inputSummary: targetFile || cmdStr || toolName,
+        passed: true,
+        verdict: 'passed',
+        reason: 'Operation passed local fastpath policies (Pillar 7 boundary, cycle detector, core laws linter)'
+      });
     }
 
     // Approved to proceed
