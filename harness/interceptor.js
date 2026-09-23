@@ -31,32 +31,40 @@ const cleanArgs = rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 
 
 const [mode = 'pre-tool', arg1, arg2] = cleanArgs;
 
+export class InterceptorExitSentinel extends Error {
+  constructor(code = 0) {
+    super(`Interceptor exited with code ${code}`);
+    this.name = 'InterceptorExitSentinel';
+    this.code = code;
+  }
+}
+
 /**
  * Universal exit helper supporting both Claude/Cursor (exit codes)
  * and Antigravity (JSON response on stdout).
  */
 export function exitWithDecision({ allowed = true, reason = '', mode = 'pre-tool', engine = 'claude' } = {}) {
+  const code = (engine === 'antigravity') ? 0 : (allowed ? 0 : 2);
   if (engine === 'antigravity') {
+    let response;
     if (mode === 'pre-tool' || mode === 'preToolUse') {
-      const response = allowed
+      response = allowed
         ? { decision: 'allow' }
         : { decision: 'deny', reason: reason || 'Operation vetoed by Jev cognitive harness.' };
-      try { fs.writeSync(1, JSON.stringify(response) + '\n'); } catch { process.stdout.write(JSON.stringify(response) + '\n'); }
-      process.exit(0);
     } else if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || mode === 'Stop') {
-      const response = allowed
+      response = allowed
         ? { decision: 'allow' }
         : { decision: 'continue', reason: reason || 'Acceptance gate rejected termination. Resolve failing tests.' };
-      try { fs.writeSync(1, JSON.stringify(response) + '\n'); } catch { process.stdout.write(JSON.stringify(response) + '\n'); }
-      process.exit(0);
     } else {
-      process.stdout.write('{}\n');
-      process.exit(0);
+      response = {};
     }
+    const out = JSON.stringify(response) + '\n';
+    try { fs.writeSync(1, out); } catch { process.stdout.write(out); }
   }
 
-  // Claude Code / Cursor / Default standard exit code contract
-  process.exit(allowed ? 0 : 2);
+  process.exitCode = code;
+  setTimeout(() => process.exit(code), 25).unref();
+  throw new InterceptorExitSentinel(code);
 }
 
 // Helper to parse JSON with auto-stripping of shell single-quotes and resilient fallback
@@ -648,11 +656,14 @@ export async function runInterceptor() {
   }
 
   // Default passthrough
-  process.exit(0);
+  exitWithDecision({ allowed: true, mode, engine });
 }
 
 if (process.argv[1] && process.argv[1].endsWith('interceptor.js')) {
   runInterceptor().catch(err => {
+    if (err instanceof InterceptorExitSentinel || err?.name === 'InterceptorExitSentinel') {
+      return;
+    }
     console.error('Interceptor unexpected error:', err.message);
     console.error(err.stack || '(no stack trace available)');
     if (mode === 'pre-tool' || mode === 'preToolUse' || mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || globalThis.__currentOperationDestructive || rawArgs.some(a => isDestructiveAction('run_command', { CommandLine: a }))) {
