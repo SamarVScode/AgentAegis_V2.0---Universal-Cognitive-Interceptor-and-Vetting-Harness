@@ -16,6 +16,7 @@ import fs from 'fs';
 import path from 'path';
 import os from 'os';
 import { fileURLToPath } from 'url';
+import { clearDecisionHistory } from './decision-tracker.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -472,6 +473,12 @@ export function runInstall(options = {}) {
     console.log(` [Config] Appended TYPESAFE_API_KEY placeholder to: ${envResult.path}`);
   } else {
     console.log(` [Config] Existing .env file verified: ${envResult.path}`);
+  }
+
+  // Ensure clean initialized decision audit log on install
+  if (!dryRun) {
+    clearDecisionHistory({ targetDir });
+    console.log(` [Audit] Initialized clean empty decision log: ${path.join(targetDir, '.aegis', 'decision-audit.jsonl')}`);
   }
 
   console.log('\n================================================================================');
