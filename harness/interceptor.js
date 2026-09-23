@@ -42,13 +42,13 @@ export function exitWithDecision({ allowed = true, reason = '', mode = 'pre-tool
         ? { decision: 'allow' }
         : { decision: 'deny', reason: reason || 'Operation vetoed by Jev cognitive harness.' };
       try { fs.writeSync(1, JSON.stringify(response) + '\n'); } catch { process.stdout.write(JSON.stringify(response) + '\n'); }
-      process.exit(allowed ? 0 : 2);
+      process.exit(0);
     } else if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || mode === 'Stop') {
       const response = allowed
         ? { decision: 'allow' }
         : { decision: 'continue', reason: reason || 'Acceptance gate rejected termination. Resolve failing tests.' };
-      process.stdout.write(JSON.stringify(response) + '\n');
-      process.exit(allowed ? 0 : 2);
+      try { fs.writeSync(1, JSON.stringify(response) + '\n'); } catch { process.stdout.write(JSON.stringify(response) + '\n'); }
+      process.exit(0);
     } else {
       process.stdout.write('{}\n');
       process.exit(0);
@@ -204,8 +204,8 @@ export async function runInterceptor() {
 
     if (engine === 'antigravity') {
       const stdinData = stdinPayload;
-      toolName = stdinData.toolCall?.name || stdinData.name || '';
-      toolArgs = stdinData.toolCall?.args || stdinData.args || {};
+      toolName = stdinData.toolCall?.name || stdinData.name || stdinData.tool_name || '';
+      toolArgs = stdinData.toolCall?.args || stdinData.args || stdinData.tool_input || {};
     } else if (engine === 'claude' || engine === 'claude-code') {
       const stdinData = stdinPayload;
       if (stdinData.tool_name) {
@@ -256,6 +256,23 @@ export async function runInterceptor() {
 
     const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || toolArgs.CommandLine || toolArgs.command || '';
     const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
+
+    // Step 0: Early API Key Fail-Closed Guardrail (Blocks all tool actions if key is missing)
+    if (!isApiKeyConfigured(process.cwd())) {
+      const missingKeyMsg = '[AEGIS GUARD FATAL]: TYPESAFE_API_KEY is not configured or missing in .env. Jev cognitive interceptor requires a valid API key to operate safely. All tool executions are blocked.';
+      console.error(missingKeyMsg);
+      recordDecision({
+        sessionId,
+        source: 'api_key_guard',
+        decisionType: 'missing_api_key_veto',
+        toolName,
+        inputSummary: targetFile,
+        passed: false,
+        verdict: 'vetoed',
+        reason: missingKeyMsg
+      });
+      exitWithDecision({ allowed: false, reason: missingKeyMsg, mode, engine });
+    }
 
     // Dynamic intent resolution: Extract user task goal if missing or generic
     const userGoal = extractUserGoal({

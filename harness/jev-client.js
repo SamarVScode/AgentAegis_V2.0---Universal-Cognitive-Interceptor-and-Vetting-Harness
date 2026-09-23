@@ -37,12 +37,34 @@ loadEnvFile(path.join(__dirname, '..', '.env'));
 loadEnvFile(path.join(process.cwd(), '.env'));
 
 export function isApiKeyConfigured(targetDir = process.cwd()) {
-  loadEnvFile(path.join(targetDir, '.env'));
+  const targetEnv = path.join(targetDir, '.env');
+  if (fs.existsSync(targetEnv)) {
+    try {
+      const raw = fs.readFileSync(targetEnv, 'utf8');
+      let foundKey = null;
+      for (const line of raw.split('\n')) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('TYPESAFE_API_KEY=') || trimmed.startsWith('OPENROUTER_API_KEY=')) {
+          const eqIdx = trimmed.indexOf('=');
+          const val = trimmed.slice(eqIdx + 1).trim().replace(/^['"]|['"]$/g, '');
+          foundKey = val;
+          break;
+        }
+      }
+      if (foundKey !== null) {
+        if (!foundKey || foundKey === 'your_typesafe_api_key_here' || foundKey === 'your_actual_key_here' || foundKey.length < 8) {
+          return false;
+        }
+        return true;
+      }
+    } catch {}
+  }
+  loadEnvFile(targetEnv);
   loadEnvFile(path.join(__dirname, '..', '.env'));
   const key = process.env.TYPESAFE_API_KEY || process.env.OPENROUTER_API_KEY || '';
   if (!key) return false;
   const trimmed = key.trim();
-  if (trimmed === 'your_typesafe_api_key_here' || trimmed === 'your_openrouter_api_key_here' || trimmed.length < 8) {
+  if (trimmed === 'your_typesafe_api_key_here' || trimmed === 'your_actual_key_here' || trimmed === 'your_openrouter_api_key_here' || trimmed.length < 8) {
     return false;
   }
   return true;
