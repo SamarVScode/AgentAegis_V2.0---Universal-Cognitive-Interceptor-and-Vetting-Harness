@@ -181,7 +181,7 @@ Options:
   }
 
   if (rawArgs.includes('--version') || rawArgs.includes('-v')) {
-    console.log('agent-aegis v2.0.0');
+    console.log('agent-aegis v2.1.0');
     process.exit(0);
   }
 
