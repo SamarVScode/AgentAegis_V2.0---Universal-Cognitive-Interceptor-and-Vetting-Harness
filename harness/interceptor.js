@@ -13,11 +13,12 @@
  */
 
 import fs from 'fs';
+import tty from 'tty';
 import path from 'path';
 import { createHash } from 'crypto';
 import { collectState, extractUserGoal } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
-import { isDestructiveAction, jevBooleanCheck } from './jev-client.js';
+import { isDestructiveAction, jevBooleanCheck, isApiKeyConfigured } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
 import { lintCoreLaws, formatCoreLawsReport } from './core-laws-linter.js';
 import { verifyAcceptanceGate } from './acceptance-gate.js';
@@ -25,7 +26,7 @@ import { recordDecision } from './decision-tracker.js';
 
 const rawArgs = process.argv.slice(2);
 const engineIdx = rawArgs.indexOf('--engine');
-const engine = engineIdx !== -1 ? rawArgs[engineIdx + 1] : (process.stdin.isTTY ? 'claude' : 'antigravity');
+const engine = engineIdx !== -1 ? rawArgs[engineIdx + 1] : (tty.isatty(0) ? 'claude' : 'antigravity');
 const cleanArgs = rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 1);
 
 const [mode = 'pre-tool', arg1, arg2] = cleanArgs;
@@ -40,7 +41,7 @@ export function exitWithDecision({ allowed = true, reason = '', mode = 'pre-tool
       const response = allowed
         ? { decision: 'allow' }
         : { decision: 'deny', reason: reason || 'Operation vetoed by Jev cognitive harness.' };
-      process.stdout.write(JSON.stringify(response) + '\n');
+      try { fs.writeSync(1, JSON.stringify(response) + '\n'); } catch { process.stdout.write(JSON.stringify(response) + '\n'); }
       process.exit(allowed ? 0 : 2);
     } else if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit' || mode === 'Stop') {
       const response = allowed
@@ -123,60 +124,23 @@ export function safeParseJson(raw) {
   return {};
 }
 
-// Event-driven stdin stream reader with Windows grace timeout & chunk inactivity handling (Fix 4 & 5)
 export async function readStdinJson(timeoutMs = null) {
-  if (process.stdin.isTTY) return {};
-  const defaultTimeout = parseInt(process.env.AEGIS_STDIN_TIMEOUT_MS, 10) || 500;
-  const effectiveTimeout = timeoutMs || defaultTimeout;
-
-  return new Promise((resolve) => {
-    let data = '';
-    let resolved = false;
-    let timer = null;
-
-    const finish = (result) => {
-      if (!resolved) {
-        resolved = true;
-        if (timer) clearTimeout(timer);
-        try { process.stdin.pause(); } catch {}
-        resolve(result);
+  if (typeof timeoutMs === "number") return new Promise(r => setTimeout(() => r({}), timeoutMs));
+  if (tty.isatty(0)) return {};
+  try {
+    const rawStr = fs.readFileSync(0, 'utf8');
+    const parsed = safeParseJson(rawStr);
+    if (rawStr && rawStr.trim() && Object.keys(parsed).length === 0) {
+      if (isDestructiveAction('run_command', { CommandLine: rawStr })) {
+        globalThis.__currentOperationDestructive = true;
+        console.error('[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.');
+        process.exit(2);
       }
-    };
-
-    const processPayload = (rawStr) => {
-      const parsed = safeParseJson(rawStr);
-      if (rawStr && rawStr.trim() && Object.keys(parsed).length === 0) {
-        if (isDestructiveAction('run_command', { CommandLine: rawStr })) {
-          globalThis.__currentOperationDestructive = true;
-          console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.`);
-          process.exit(2);
-        }
-      }
-      return parsed;
-    };
-
-    const resetTimer = (delay) => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        finish(processPayload(data));
-      }, delay);
-    };
-
-    resetTimer(effectiveTimeout);
-
-    process.stdin.setEncoding('utf8');
-    process.stdin.on('data', chunk => {
-      data += chunk;
-      // When chunks arrive, reset inactivity timer to allow incoming payload streaming
-      resetTimer(300);
-    });
-    process.stdin.on('end', () => {
-      finish(processPayload(data));
-    });
-    process.stdin.on('error', () => {
-      finish({});
-    });
-  });
+    }
+    return parsed;
+  } catch (err) {
+    return {};
+  }
 }
 
 /**
@@ -203,6 +167,33 @@ export async function runInterceptor() {
                     process.env.CURSOR_SESSION_ID ||
                     sessionFromFile ||
                     (`cwd-${cwdHash}`);
+
+  // -------------------------------------------------------------------------
+  // HOOK 0: PRE-INVOCATION / USER PROMPT EARLY GUARDRAIL
+  // -------------------------------------------------------------------------
+  if (mode === 'pre-invocation' || mode === 'preInvocation' || mode === 'user-prompt' || mode === 'UserPrompt') {
+    if (!isApiKeyConfigured(process.cwd())) {
+      const warningMsg = '[AEGIS GUARD FATAL]: TYPESAFE_API_KEY is not configured or missing in .env. Jev System One cognitive interceptor cannot operate without a valid API key. Please configure TYPESAFE_API_KEY in .env before issuing tasks.';
+      console.error(warningMsg);
+      if (engine === 'antigravity') {
+        const response = {
+          injectSteps: [
+            {
+              ephemeralMessage: warningMsg
+            }
+          ]
+        };
+        process.stdout.write(JSON.stringify(response) + '\n');
+        process.exit(0);
+      } else {
+        process.exit(2);
+      }
+    }
+    if (engine === 'antigravity') {
+      try { fs.writeSync(1, JSON.stringify({ injectSteps: [] }) + '\n'); } catch { process.stdout.write(JSON.stringify({ injectSteps: [] }) + '\n'); }
+    }
+    process.exit(0);
+  }
 
   // -------------------------------------------------------------------------
   // HOOK 1: PRE-TOOL USE
@@ -263,7 +254,7 @@ export async function runInterceptor() {
       }
     }
 
-    const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || '';
+    const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || toolArgs.CommandLine || toolArgs.command || '';
     const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
 
     // Dynamic intent resolution: Extract user task goal if missing or generic
@@ -382,7 +373,7 @@ export async function runInterceptor() {
     }
 
     // Step 3b: Shift-Left Per-Artifact Semantic Gating (Jev System One)
-    const isShiftLeftEnabled = process.env.AEGIS_SHIFT_LEFT === 'true' || Boolean(toolArgs.enableShiftLeft);
+    const isShiftLeftEnabled = process.env.AEGIS_SHIFT_LEFT !== 'false' || Boolean(toolArgs.enableShiftLeft);
     const isFileWriteOrEdit = wholeFileContent && (
       toolName.includes('write') ||
       toolName.includes('replace') ||
@@ -622,18 +613,7 @@ export async function runInterceptor() {
     const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
     const gateResult = await verifyAcceptanceGate(customCmd, process.cwd(), agentStatement, sessionId);
 
-    recordDecision({
-      sessionId,
-      source: 'acceptance_gate',
-      decisionType: gateResult.stage || 'acceptance_gate',
-      toolName: 'verifyAcceptanceGate',
-      inputSummary: agentStatement || customCmd || 'completion check',
-      passed: gateResult.passed,
-      verdict: gateResult.passed ? 'passed' : 'vetoed',
-      reason: gateResult.reason,
-      probability: gateResult.probability,
-      metadata: { exitCode: gateResult.exitCode, testsRun: gateResult.testsRun }
-    });
+    // Stage 2 decision already recorded in verifyAcceptanceGate
 
     if (gateResult.passed) {
       console.error(`\n======================================================`);

@@ -34,6 +34,19 @@ export function loadEnvFile(envPath) {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 loadEnvFile(path.join(__dirname, '..', '.env'));
+loadEnvFile(path.join(process.cwd(), '.env'));
+
+export function isApiKeyConfigured(targetDir = process.cwd()) {
+  loadEnvFile(path.join(targetDir, '.env'));
+  loadEnvFile(path.join(__dirname, '..', '.env'));
+  const key = process.env.TYPESAFE_API_KEY || process.env.OPENROUTER_API_KEY || '';
+  if (!key) return false;
+  const trimmed = key.trim();
+  if (trimmed === 'your_typesafe_api_key_here' || trimmed === 'your_openrouter_api_key_here' || trimmed.length < 8) {
+    return false;
+  }
+  return true;
+}
 
 export const TYPESAFE_API_URL = process.env.TYPESAFE_BASE_URL || 'https://api.typesafe.ai/v1/systemone';
 export const OPENROUTER_DECISIONS_URL = 'https://openrouter.ai/api/alpha/decisions';

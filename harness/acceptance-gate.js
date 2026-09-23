@@ -260,32 +260,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   const workspace = detectWorkspaceEcosystem(effectiveTargetDir);
   const testCommand = customCommand || workspace.testCommand || 'npm test';
 
-  if (!customCommand && workspace.ecosystem === 'unknown') {
-    const reconciliationResult = agentStatement
-      ? await reconcileClaimsWithGroundTruth(
-          extractVerifiableClaims(agentStatement),
-          loadSession(sessionId || 'default'),
-          effectiveTargetDir,
-          null
-        )
-      : null;
-    if (reconciliationResult && !reconciliationResult.reconciled) {
-      return {
-        passed: false,
-        stage: 'stage_1_5_claim_reconciliation',
-        reason: reconciliationResult.reason,
-        hardVeto: reconciliationResult.hardVeto || false
-      };
-    }
-    return {
-      passed: true,
-      stage: 'stage_1_no_test_contract',
-      probability: 1.0,
-      exitCode: 0,
-      testsRun: 0,
-      reason: 'No test contract detected: no package.json, lockfile, or build manifest in workspace. Stage 1 skipped. Stage 1.5 claim reconciliation applied.'
-    };
-  }
+  const isNoContract = !customCommand && workspace.ecosystem === 'unknown';
 
   let stdout = '';
   let stderr = '';
@@ -293,26 +268,28 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   let isTimeout = false;
   let isMaxBuffer = false;
 
-  try {
-    const res = await safeSpawnAsync(testCommand, {
-      cwd: effectiveTargetDir,
-      timeout: 45000,
-      maxBuffer: 10 * 1024 * 1024,
-      env: { ...process.env, CI: 'true', FORCE_COLOR: '0' }
-    });
-    stdout = res.stdout || '';
-    stderr = res.stderr || '';
-  } catch (err) {
-    stdout = err.stdout || '';
-    stderr = err.stderr || '';
-    if (err.killed || (typeof err.message === 'string' && err.message.includes('timed out'))) {
-      isTimeout = true;
-      exitCode = 124;
-    } else if (err.isMaxBuffer || err.code_name === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
-      isMaxBuffer = true;
-      exitCode = 1;
-    } else {
-      exitCode = typeof err.code === 'number' ? err.code : 1;
+  if (!isNoContract) {
+    try {
+      const res = await safeSpawnAsync(testCommand, {
+        cwd: effectiveTargetDir,
+        timeout: 45000,
+        maxBuffer: 10 * 1024 * 1024,
+        env: { ...process.env, CI: 'true', FORCE_COLOR: '0' }
+      });
+      stdout = res.stdout || '';
+      stderr = res.stderr || '';
+    } catch (err) {
+      stdout = err.stdout || '';
+      stderr = err.stderr || '';
+      if (err.killed || (typeof err.message === 'string' && err.message.includes('timed out'))) {
+        isTimeout = true;
+        exitCode = 124;
+      } else if (err.isMaxBuffer || err.code_name === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+        isMaxBuffer = true;
+        exitCode = 1;
+      } else {
+        exitCode = typeof err.code === 'number' ? err.code : 1;
+      }
     }
   }
 
@@ -343,7 +320,9 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   }
 
   // Step 1: Deterministic semantic regex parsing
-  const parsedRun = parseTestRunnerOutput(workspace.ecosystem, stdout, stderr, exitCode);
+  const parsedRun = isNoContract
+    ? { passed: true, testsRun: 0, reason: 'No test contract detected in workspace; Stage 1 skipped.' }
+    : parseTestRunnerOutput(workspace.ecosystem, stdout, stderr, exitCode);
 
   // Step 1.5 (Lie Detector): If agentStatement is provided, call extractVerifiableClaims and reconcileClaimsWithGroundTruth
   let reconciliationResult = null;
@@ -365,12 +344,13 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
         exitCode,
         testsRun: parsedRun.testsRun ?? 0,
         claimsAudited: true,
-        claims
+        claims,
+        hardVeto: reconciliationResult.hardVeto || false
       };
     }
   }
 
-  if (!parsedRun.passed) {
+  if (!isNoContract && !parsedRun.passed) {
     return {
       passed: false,
       stage: 'stage_1_semantic_parser',
@@ -383,7 +363,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     };
   }
 
-  if (parsedRun.testsRun === 0) {
+  if (!isNoContract && parsedRun.testsRun === 0) {
     return {
       passed: false,
       stage: 'stage_1_semantic_parser',
@@ -404,17 +384,17 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   // Step 2: Jev Semantic Completion Gate (P >= 0.85)
   const jevState = {
     workspace_ecosystem: workspace.ecosystem,
-    command: testCommand,
+    command: isNoContract ? "none (no test contract detected)" : testCommand,
     exit_code: exitCode,
-    tests_passed: parsedRun.testsRun ?? 1,
+    tests_passed: parsedRun.testsRun ?? (isNoContract ? 0 : 1),
     tests_failed: 0,
-    runner_summary: stdout.slice(-600).trim(),
+    runner_summary: isNoContract ? "No test contract detected in workspace; claim reconciliation applied." : stdout.slice(-600).trim(),
     has_unhandled_stderr: !isBenign && cleanedStderr.length > 0,
     // 7-Pillar Precision Context Metadata
     user_intent: (agentStatement || process.env.TASK_DESCRIPTION || 'Complete verified software engineering task').slice(0, 1500),
     test_runner_contract: {
       ecosystem: workspace.ecosystem,
-      command: testCommand,
+      command: isNoContract ? "none" : testCommand,
       exit_code: exitCode,
       last_test_passed: exitCode === 0 && parsedRun.passed === true
     },
@@ -447,11 +427,23 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     jevState.claims_audited = false;
   }
 
+  const assertion = isNoContract
+    ? 'Has the agent completed the engineering task consistently with verifiable claims and zero unauthorized modifications?'
+    : 'Did the automated test suite complete successfully with zero failures and verified completion status?';
+
+  const criteriaTrue = isNoContract
+    ? 'The agent statements and verifiable claims match ground truth on disk with zero errors and no unverified claims.'
+    : 'The test runner completed with exit code 0 and reported zero test failures.';
+
+  const criteriaFalse = isNoContract
+    ? 'Unreconciled claims, missing files, unauthorized changes, or incomplete task execution.'
+    : 'Tests failed, crashed, aborted, or exited with an error.';
+
   const jevResult = await jevBooleanCheck({
     state: jevState,
-    assertion: 'Did the automated test suite complete successfully with zero failures and verified completion status?',
-    criteriaTrue: 'The test runner completed with exit code 0 and reported zero test failures.',
-    criteriaFalse: 'Tests failed, crashed, aborted, or exited with an error.',
+    assertion,
+    criteriaTrue,
+    criteriaFalse,
     isDestructive: false
   });
 
@@ -463,9 +455,9 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     targetDir: effectiveTargetDir,
     sessionId: sessionKey,
     source: 'acceptance_gate',
-    decisionType: 'stage_2_jev_gate',
+    decisionType: isNoContract ? 'stage_2_no_contract_jev_gate' : 'stage_2_jev_gate',
     toolName: 'verifyAcceptanceGate',
-    inputSummary: testCommand,
+    inputSummary: isNoContract ? (agentStatement || 'no test contract check') : testCommand,
     passed: isApproved,
     verdict: isApproved ? 'passed' : 'vetoed',
     probability: prob,
@@ -474,10 +466,10 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
       : `Rejected by Jev Acceptance Gate (Probability: ${prob.toFixed(2)} < 0.85 threshold). Output indicates unverified or failing state.`,
     metadata: {
       user_intent: jevState.user_intent,
-      assertion: 'Did the automated test suite complete successfully with zero failures and verified completion status?',
+      assertion,
       criteria: {
-        true: 'The test runner completed with exit code 0 and reported zero test failures.',
-        false: 'Tests failed, crashed, aborted, or exited with an error.'
+        true: criteriaTrue,
+        false: criteriaFalse
       },
       model: jevResult.model || 'jev-1.13.0',
       seven_pillars: {
@@ -497,7 +489,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
 
   return {
     passed: isApproved,
-    stage: 'stage_2_jev_gate',
+    stage: isNoContract ? 'stage_2_no_contract_jev_gate' : 'stage_2_jev_gate',
     // Authoritative gate signal: single composite confidence derived from Jev noul probability.
     // Use this field for any downstream auto-apply gate logic.
     // 'probability', 'usage', and 'model' below are supplementary audit metadata only.

@@ -39,7 +39,7 @@ export function backupFile(filePath) {
  */
 export function ensureEnvFile(targetDir, dryRun = false) {
   const envPath = path.join(targetDir, '.env');
-  const template = '# TypeSafe Aegis - Jev Cognitive Interceptor\n# Add your TypeSafe API Key below.\nTYPESAFE_API_KEY=your_typesafe_api_key_here\n';
+  const template = '# TypeSafe Aegis - Jev Cognitive Interceptor\n# Add your TypeSafe API Key below.\nTYPESAFE_API_KEY=your_typesafe_api_key_here\nAEGIS_SHIFT_LEFT=true\nAEGIS_FULL_AUDIT=true\n';
 
   if (!fs.existsSync(envPath)) {
     if (!dryRun) {
@@ -49,10 +49,18 @@ export function ensureEnvFile(targetDir, dryRun = false) {
   }
 
   const existing = fs.readFileSync(envPath, 'utf8');
+  let appendContent = '';
   if (!existing.includes('TYPESAFE_API_KEY')) {
-    if (!dryRun) {
-      fs.appendFileSync(envPath, '\n# TypeSafe Aegis Configuration\nTYPESAFE_API_KEY=your_typesafe_api_key_here\n', 'utf8');
-    }
+    appendContent += '\n# TypeSafe Aegis Configuration\nTYPESAFE_API_KEY=your_typesafe_api_key_here\n';
+  }
+  if (!existing.includes('AEGIS_SHIFT_LEFT')) {
+    appendContent += 'AEGIS_SHIFT_LEFT=true\n';
+  }
+  if (!existing.includes('AEGIS_FULL_AUDIT')) {
+    appendContent += 'AEGIS_FULL_AUDIT=true\n';
+  }
+  if (appendContent && !dryRun) {
+    fs.appendFileSync(envPath, appendContent, 'utf8');
     return { updated: true, path: envPath };
   }
 
@@ -227,11 +235,17 @@ export function installClaudeHooks(targetDir, interceptorPath, dryRun = false) {
 
   const preToolCmd = `node "${execPath}" --engine claude pre-tool`;
   const stopCmd = `node "${execPath}" --engine claude verify-gate`;
+  const preInvocationCmd = `node "${execPath}" --engine claude pre-invocation`;
 
   const updated = { ...existing };
   if (!updated.hooks || typeof updated.hooks !== 'object') {
     updated.hooks = {};
   }
+  if (!Array.isArray(updated.hooks.PrePrompt)) updated.hooks.PrePrompt = [];
+  const prePromptHook = { matcher: '.*', hooks: [{ type: 'command', command: preInvocationCmd }] };
+  const prePromptIdx = updated.hooks.PrePrompt.findIndex(h => typeof h === 'object' && h.hooks?.[0]?.command?.includes('interceptor.js'));
+  if (prePromptIdx !== -1) updated.hooks.PrePrompt[prePromptIdx] = prePromptHook;
+  else updated.hooks.PrePrompt.push(prePromptHook);
 
   // Merge PreToolUse
   if (!Array.isArray(updated.hooks.PreToolUse)) updated.hooks.PreToolUse = [];
@@ -289,6 +303,7 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
     ? execPath.replace(/^["']|["']$/g, '')
     : `"${execPath}"`;
 
+  const preInvocationCmd = `node ${cleanExecPath} --engine antigravity pre-invocation`;
   const preToolCmd = `node ${cleanExecPath} --engine antigravity pre-tool`;
   const stopCmd = `node ${cleanExecPath} --engine antigravity verify-gate`;
 
@@ -299,6 +314,9 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   if (!updated[HOOK_NAME] || typeof updated[HOOK_NAME] !== 'object') {
     updated[HOOK_NAME] = {};
   }
+
+  // PreInvocation is a flat handler list
+  updated[HOOK_NAME].PreInvocation = [{ type: 'command', command: preInvocationCmd }];
 
   // PreToolUse requires grouped matcher structure
   updated[HOOK_NAME].PreToolUse = [
@@ -325,6 +343,7 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   if (!updated.hooks || typeof updated.hooks !== 'object') {
     updated.hooks = {};
   }
+  updated.hooks.PreInvocation = [{ type: 'command', command: preInvocationCmd }];
   updated.hooks.PreToolUse = [
     {
       matcher: '.*',
