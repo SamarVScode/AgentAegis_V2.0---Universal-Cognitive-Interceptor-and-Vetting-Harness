@@ -386,3 +386,149 @@ export function collectState(
 
   return buildAdaptiveEnvelope(rawState, determinedScope);
 }
+
+export const UNIVERSAL_ANCHOR_DISQUALIFIERS = 'Disqualifiers: contains dummy or placeholder // TODO stubs, hardcoded mock secrets, bypassed validations, unhandled exception rejections, or broken exports.';
+
+/**
+ * Anchors dynamic criteriaFalse with universal software engineering anti-patterns.
+ */
+export function anchorCriteriaFalse(criteriaFalse = '') {
+  const base = (criteriaFalse || '').trim();
+  if (base.toLowerCase().includes('dummy') && base.toLowerCase().includes('stub')) {
+    return base;
+  }
+  return base ? `${base} ${UNIVERSAL_ANCHOR_DISQUALIFIERS}`.trim() : UNIVERSAL_ANCHOR_DISQUALIFIERS;
+}
+
+/**
+ * Extracts or synthesizes dynamic specification contracts (True/False criteria) for a code artifact.
+ * Priority 1: Companion spec file (.<basename>.spec.json or .<basename>.aegis.json)
+ * Priority 2: In-file header contract annotations (/** @aegis-contract ... @claim ... @true ... @false ... * /)
+ * Priority 3: Tool payload metadata (toolArgs.criteria, toolArgs.claim, or toolArgs.Description)
+ * Priority 4: Dynamic AST / heuristic synthesis from symbols (exports, classes, functions, imports)
+ */
+export function extractArtifactContract({
+  targetFile = '',
+  codeContent = '',
+  toolArgs = {},
+  workspaceRoot = process.cwd(),
+  userGoal = ''
+} = {}) {
+  const baseName = path.basename(targetFile || '');
+  const dirName = targetFile ? path.dirname(targetFile) : '.';
+
+  // Priority 1: Companion spec file
+  if (targetFile) {
+    const candidatePaths = [
+      path.join(dirName, `.${baseName}.spec.json`),
+      path.join(dirName, `.${baseName}.aegis.json`),
+      path.join(dirName, `.${baseName}.json`),
+      path.join(workspaceRoot, '.aegis', 'specs', `${baseName}.json`)
+    ];
+
+    for (const cand of candidatePaths) {
+      try {
+        if (fs.existsSync(cand)) {
+          const raw = fs.readFileSync(cand, 'utf8').trim();
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            const critTrue = parsed.true || parsed.criteriaTrue || parsed.criteria_true;
+            const critFalse = parsed.false || parsed.criteriaFalse || parsed.criteria_false;
+            if (critTrue && critFalse) {
+              return {
+                source: 'companion_spec_file',
+                claim: parsed.claim || parsed.assertion || `Specification contract for ${baseName}`,
+                criteriaTrue: String(critTrue).trim(),
+                criteriaFalse: String(critFalse).trim()
+              };
+            }
+          }
+        }
+      } catch {}
+    }
+  }
+
+  // Priority 2: In-file header contract annotations
+  if (typeof codeContent === 'string' && codeContent.length > 0) {
+    const headerSlice = codeContent.slice(0, 2000);
+    if (/@(?:aegis-contract|contract|spec|claim)/i.test(headerSlice)) {
+      const claimMatch = headerSlice.match(/@claim\s+([^\r\n*]+)/i);
+      const trueMatch = headerSlice.match(/@(?:true|criteriaTrue)\s+([^\r\n*]+)/i);
+      const falseMatch = headerSlice.match(/@(?:false|criteriaFalse)\s+([^\r\n*]+)/i);
+
+      if (trueMatch && falseMatch) {
+        return {
+          source: 'header_annotation',
+          claim: claimMatch ? claimMatch[1].trim() : `Declared contract for ${baseName}`,
+          criteriaTrue: trueMatch[1].trim(),
+          criteriaFalse: falseMatch[1].trim()
+        };
+      }
+    }
+  }
+
+  // Priority 3: Tool payload metadata (criteria, claim, Description)
+  if (toolArgs && typeof toolArgs === 'object') {
+    if (toolArgs.criteria && typeof toolArgs.criteria === 'object') {
+      const critTrue = toolArgs.criteria.true || toolArgs.criteria.criteriaTrue;
+      const critFalse = toolArgs.criteria.false || toolArgs.criteria.criteriaFalse;
+      if (critTrue && critFalse) {
+        return {
+          source: 'tool_criteria',
+          claim: toolArgs.claim || toolArgs.Description || toolArgs.description || `Tool declared criteria for ${baseName}`,
+          criteriaTrue: String(critTrue).trim(),
+          criteriaFalse: String(critFalse).trim()
+        };
+      }
+    }
+
+    const desc = toolArgs.Description || toolArgs.description || toolArgs.Instruction || toolArgs.instruction;
+    if (typeof desc === 'string' && desc.trim().length >= 10) {
+      const cleanDesc = desc.trim();
+      return {
+        source: 'tool_description',
+        claim: cleanDesc,
+        criteriaTrue: `The code implements ${cleanDesc} with proper syntax, valid exports, and complete error handling.`,
+        criteriaFalse: `The code fails to implement ${cleanDesc}, leaves functions incomplete or stubbed, or contains unhandled failure branches.`
+      };
+    }
+  }
+
+  // Priority 4: Dynamic AST / heuristic synthesis from symbols
+  let exportedSymbols = [];
+  if (typeof codeContent === 'string') {
+    const exportMatches = [...codeContent.matchAll(/(?:export\s+(?:async\s+)?(?:function|class|const|let|var)\s+([a-zA-Z0-9_$]+)|exports\.([a-zA-Z0-9_$]+)|module\.exports\s*=\s*\{([^}]+)\})/g)];
+    for (const m of exportMatches) {
+      if (m[1]) exportedSymbols.push(m[1]);
+      else if (m[2]) exportedSymbols.push(m[2]);
+      else if (m[3]) {
+        const cjsNames = m[3].split(',').map(s => s.trim().split(':')[0].trim()).filter(Boolean);
+        exportedSymbols.push(...cjsNames);
+      }
+    }
+  }
+
+  const uniqueSymbols = Array.from(new Set(exportedSymbols)).slice(0, 10);
+  const targetLabel = baseName || 'target file';
+  const taskLabel = (userGoal && userGoal !== 'Autonomous software engineering task')
+    ? userGoal.slice(0, 200)
+    : targetLabel;
+
+  if (uniqueSymbols.length > 0) {
+    const symbolsList = uniqueSymbols.join(', ');
+    return {
+      source: 'ast_synthesis',
+      claim: `Implementation of ${symbolsList} in ${targetLabel}`,
+      criteriaTrue: `Code provides functional, non-stubbed implementations for ${symbolsList} fulfilling '${taskLabel}'.`,
+      criteriaFalse: `Code contains dummy or placeholder stubs for ${symbolsList}, lacks error handling, or fails to export required symbols.`
+    };
+  }
+
+  return {
+    source: 'fallback_synthesis',
+    claim: `Production implementation for ${targetLabel}`,
+    criteriaTrue: `Code is functional, syntactically valid, and satisfies requirements for '${taskLabel}'.`,
+    criteriaFalse: `Code contains placeholder stubs, syntax errors, destructive patterns, or violates task specifications.`
+  };
+}
+

@@ -16,7 +16,7 @@ import fs from 'fs';
 import tty from 'tty';
 import path from 'path';
 import { createHash } from 'crypto';
-import { collectState, extractUserGoal } from './state-collector.js';
+import { collectState, extractUserGoal, extractArtifactContract, anchorCriteriaFalse } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
 import { isDestructiveAction, jevBooleanCheck, isApiKeyConfigured } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
@@ -424,7 +424,7 @@ export async function runInterceptor() {
       }
     }
 
-    // Step 3b: Shift-Left Per-Artifact Semantic Gating (Jev System One)
+    // Step 3b: Shift-Left Two-Phase Semantic Gating (Jev System One)
     const isShiftLeftEnabled = process.env.AEGIS_SHIFT_LEFT !== 'false' || Boolean(toolArgs.enableShiftLeft);
     const isFileWriteOrEdit = wholeFileContent && (
       toolName.includes('write') ||
@@ -449,15 +449,90 @@ export async function runInterceptor() {
         };
 
         const state = collectState(resolvedTask, toolName, toolArgs, sessionId, session.lastStderr || '', 'localized', stateOptions);
-        const artifactAssertion = `Is this proposed code modification for '${path.basename(targetFile)}' safe, free of malicious exfiltration, and aligned with the software engineering task?`;
-        const artifactCriteriaTrue = 'The code is safe, functional, aligned with task requirements, and free of security hazards.';
-        const artifactCriteriaFalse = 'The code contains malicious patterns, credential leaks, destructive logic, or violates task specifications.';
 
-        const artifactCheck = await jevBooleanCheck({
+        // Extract or dynamically synthesize artifact specification contract
+        const contract = extractArtifactContract({
+          targetFile,
+          codeContent: wholeFileContent,
+          toolArgs,
+          workspaceRoot: effectiveWorkspace,
+          userGoal: resolvedTask
+        });
+
+        const targetBase = path.basename(targetFile);
+        const anchoredFalseCriteria = anchorCriteriaFalse(contract.criteriaFalse);
+
+        // Standardized Hardcoded Assertion Templates
+        const specAssertion = `The proposed True/False criteria for '${targetBase}' is rigorous, complete, and non-trivial for the requested task, strictly preventing stubs, security vulnerabilities, and logic flaws.`;
+        const codeAssertion = `The proposed code in '${targetBase}' fulfills the certified specification and satisfies production-grade invariants without stubs, mock bypasses, or regressions.`;
+
+        const isTwoPhase = process.env.AEGIS_TWO_PHASE !== 'false';
+
+        // -------------------------------------------------------------------
+        // PHASE 1: Specification Vetting Gate (spec_vetting_gate)
+        // -------------------------------------------------------------------
+        if (isTwoPhase) {
+          const specCriteriaTrue = 'The criteria explicitly mandates concrete functional implementations, error handling, and security constraints without tautological or trivial definitions.';
+          const specCriteriaFalse = 'The criteria is tautological, trivial (e.g. self-fulfilling or vacuously true), permits dummy placeholder stubs, ignores error handling, or omits task requirements.';
+
+          const specContext = {
+            task: resolvedTask,
+            targetFile: targetBase,
+            contractSource: contract.source,
+            declaredClaim: contract.claim,
+            proposedCriteria: {
+              true: contract.criteriaTrue,
+              false: anchoredFalseCriteria
+            }
+          };
+
+          const specCheck = await jevBooleanCheck({
+            state: JSON.stringify(specContext, null, 2),
+            assertion: specAssertion,
+            criteriaTrue: specCriteriaTrue,
+            criteriaFalse: specCriteriaFalse,
+            isDestructive: false
+          });
+
+          recordDecision({
+            sessionId,
+            targetDir: effectiveWorkspace,
+            source: 'jev_system_one',
+            decisionType: 'spec_vetting_gate',
+            toolName,
+            inputSummary: `${targetBase} specification (${contract.source})`,
+            passed: specCheck.approved,
+            verdict: specCheck.approved ? 'passed' : 'vetoed',
+            noul: specCheck.noul,
+            probability: specCheck.probability,
+            reason: specCheck.reason || (specCheck.approved
+              ? `Specification for '${targetBase}' certified sound by Jev System One (Probability: ${specCheck.probability})`
+              : `Specification for '${targetBase}' rejected by Jev System One (Probability: ${specCheck.probability})`),
+            metadata: {
+              assertion: specAssertion,
+              criteria: { true: specCriteriaTrue, false: specCriteriaFalse },
+              model: specCheck.model || 'jev-1.13.0',
+              usage: specCheck.usage || {},
+              specContext
+            }
+          });
+
+          if (!specCheck.approved) {
+            const specVetoMsg = `[JEV SPEC VETO]: Specification for '${targetBase}' rejected by Jev System One (Probability: ${specCheck.probability || 0}): ${specCheck.reason || 'Criteria is too soft, trivial, or permits stubs.'}`;
+            console.error(specVetoMsg);
+            exitWithDecision({ allowed: false, reason: specVetoMsg, mode, engine });
+            return;
+          }
+        }
+
+        // -------------------------------------------------------------------
+        // PHASE 2: Code Conformance Gate (code_conformance_gate)
+        // -------------------------------------------------------------------
+        const codeCheck = await jevBooleanCheck({
           state,
-          assertion: artifactAssertion,
-          criteriaTrue: artifactCriteriaTrue,
-          criteriaFalse: artifactCriteriaFalse,
+          assertion: codeAssertion,
+          criteriaTrue: contract.criteriaTrue,
+          criteriaFalse: anchoredFalseCriteria,
           isDestructive: false
         });
 
@@ -465,30 +540,33 @@ export async function runInterceptor() {
           sessionId,
           targetDir: effectiveWorkspace,
           source: 'jev_system_one',
-          decisionType: 'artifact_semantic_gate',
+          decisionType: 'code_conformance_gate',
           toolName,
           inputSummary: `${targetFile} (${wholeFileContent.length} bytes)`,
-          passed: artifactCheck.approved,
-          verdict: artifactCheck.approved ? 'passed' : 'vetoed',
-          noul: artifactCheck.noul,
-          probability: artifactCheck.probability,
-          reason: artifactCheck.reason || (artifactCheck.approved ? `Artifact '${path.basename(targetFile)}' approved by Jev System One (Probability: ${artifactCheck.probability})` : `Artifact '${path.basename(targetFile)}' rejected by Jev System One (Probability: ${artifactCheck.probability})`),
+          passed: codeCheck.approved,
+          verdict: codeCheck.approved ? 'passed' : 'vetoed',
+          noul: codeCheck.noul,
+          probability: codeCheck.probability,
+          reason: codeCheck.reason || (codeCheck.approved
+            ? `Code for '${targetBase}' approved by Jev System One (Probability: ${codeCheck.probability})`
+            : `Code for '${targetBase}' rejected by Jev System One (Probability: ${codeCheck.probability})`),
           metadata: {
-            assertion: artifactAssertion,
+            assertion: codeAssertion,
             criteria: {
-              true: artifactCriteriaTrue,
-              false: artifactCriteriaFalse
+              true: contract.criteriaTrue,
+              false: anchoredFalseCriteria
             },
-            model: artifactCheck.model || 'jev-1.13.0',
-            usage: artifactCheck.usage || {},
+            model: codeCheck.model || 'jev-1.13.0',
+            usage: codeCheck.usage || {},
             seven_pillars_input: state
           }
         });
 
-        if (!artifactCheck.approved) {
-          const vetoMsg = `[JEV ARTIFACT VETO]: Artifact '${path.basename(targetFile)}' rejected by Jev System One (Probability: ${artifactCheck.probability || 0}): ${artifactCheck.reason || 'Failed quality/alignment check.'}`;
-          console.error(vetoMsg);
-          exitWithDecision({ allowed: false, reason: vetoMsg, mode, engine });
+        if (!codeCheck.approved) {
+          const codeVetoMsg = `[JEV CODE VETO]: Code for '${targetBase}' rejected by Jev System One (Probability: ${codeCheck.probability || 0}): ${codeCheck.reason || 'Failed certified specification.'}`;
+          console.error(codeVetoMsg);
+          exitWithDecision({ allowed: false, reason: codeVetoMsg, mode, engine });
+          return;
         }
       } catch (artifactErr) {
         console.warn(`[JEV WARN]: Artifact check failed to reach Jev (${artifactErr.message}); proceeding under fail-open.`);

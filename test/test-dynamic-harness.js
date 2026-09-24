@@ -21,7 +21,7 @@ import {
 } from '../harness/jev-client.js';
 import { isDestructiveAction as isDestructiveFromVetter } from '../harness/jev-vetter.js';
 import { detectWorkspaceEcosystem, findWorkspaceRoot, isGasContext } from '../harness/manifest-sniffer.js';
-import { collectState, hashArgument, compressToolHistory, buildAdaptiveEnvelope } from '../harness/state-collector.js';
+import { collectState, hashArgument, compressToolHistory, buildAdaptiveEnvelope, extractArtifactContract, anchorCriteriaFalse } from '../harness/state-collector.js';
 import { levenshteinDistance, computeDiffVariance, classifyEditVariance, isSubstantiveChange } from '../harness/diff-variance.js';
 import { lintCoreLaws, isCoreLawsViolated, formatCoreLawsReport } from '../harness/core-laws-linter.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from '../harness/cycle-detector.js';
@@ -195,6 +195,68 @@ async function runDynamicHarnessTests() {
 
     const adaptiveFailure = buildAdaptiveEnvelope({ git_diff: 'a'.repeat(5000), stderr_tail: 'error'.repeat(1000) }, 'failure');
     assert(adaptiveFailure.git_diff.includes('truncated'), 'Git diff bounded adaptively');
+
+    // Test anchorCriteriaFalse
+    const anchored = anchorCriteriaFalse('Custom failure condition.');
+    assert(anchored.includes('Custom failure condition.') && anchored.includes('Disqualifiers: contains dummy'), 'anchorCriteriaFalse appends universal disqualifiers');
+    const alreadyAnchored = anchorCriteriaFalse('Contains dummy stubs.');
+    assert(alreadyAnchored === 'Contains dummy stubs.', 'anchorCriteriaFalse preserves existing stub check');
+
+    // Test extractArtifactContract: Header annotation
+    const sampleCodeWithHeader = `
+/**
+ * @aegis-contract
+ * @claim Implements RS256 JWT signature verification
+ * @true Verifies RS256 JWT token with public key and checks expiry
+ * @false Accepts unsigned tokens or unhandled token expiry
+ */
+export function verifyToken(token) { return true; }
+`;
+    const contractFromHeader = extractArtifactContract({
+      targetFile: 'src/auth.js',
+      codeContent: sampleCodeWithHeader
+    });
+    assert(contractFromHeader.source === 'header_annotation', 'Extracted from header annotation');
+    assert(contractFromHeader.claim.includes('RS256 JWT'), 'Header claim extracted');
+    assert(contractFromHeader.criteriaTrue.includes('Verifies RS256'), 'Header criteriaTrue extracted');
+
+    // Test extractArtifactContract: Tool description
+    const contractFromDesc = extractArtifactContract({
+      targetFile: 'src/math.js',
+      codeContent: 'export function add(a, b) { return a + b; }',
+      toolArgs: { Description: 'Implements addition and multiplication math helpers with integer bounds' }
+    });
+    assert(contractFromDesc.source === 'tool_description', 'Extracted from tool description');
+    assert(contractFromDesc.criteriaTrue.includes('addition and multiplication'), 'Tool description mapped to criteriaTrue');
+
+    // Test extractArtifactContract: AST synthesis
+    const contractFromAst = extractArtifactContract({
+      targetFile: 'src/service.js',
+      codeContent: 'export function startServer() {}\nexport class WorkerEngine {}',
+      userGoal: 'Build high-performance streaming worker'
+    });
+    assert(contractFromAst.source === 'ast_synthesis', 'Extracted from AST synthesis');
+    assert(contractFromAst.criteriaTrue.includes('startServer, WorkerEngine'), 'AST exported symbols captured');
+
+    // Test extractArtifactContract: Companion spec file
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'spec-test-'));
+    const targetFilePath = path.join(tmpDir, 'db.js');
+    const companionSpecPath = path.join(tmpDir, '.db.js.spec.json');
+    fs.writeFileSync(companionSpecPath, JSON.stringify({
+      claim: 'Postgres connection pooling with retry backoff',
+      true: 'Establishes pool with max 20 connections and exponential backoff retry',
+      false: 'Single unpooled connection or unhandled connection failure'
+    }), 'utf8');
+
+    const contractFromCompanion = extractArtifactContract({
+      targetFile: targetFilePath,
+      codeContent: 'export const pool = {};',
+      workspaceRoot: tmpDir
+    });
+    assert(contractFromCompanion.source === 'companion_spec_file', 'Extracted from companion spec file');
+    assert(contractFromCompanion.criteriaTrue.includes('max 20 connections'), 'Companion true extracted');
+    assert(contractFromCompanion.criteriaFalse.includes('Single unpooled'), 'Companion false extracted');
+    fs.rmSync(tmpDir, { recursive: true, force: true });
 
     console.log('[PASS] Module 3 (state-collector.js) passed all tests.');
     passed++;

@@ -126,6 +126,15 @@ Behavioral guidelines to reduce common LLM coding mistakes. Merge with project-s
 - Universal Research Sandboxing: When reading multi-file documentation (Obsidian vaults, markdown notes, PDF specs, Excel/CSV datasets, or multi-query web searches), never dump raw files or scraped search outputs directly into coordinator context. Delegate bulk research to an ephemeral subagent that distills findings into a compact <1,500 token summary artifact (RESEARCH.md) and terminates. The coordinator only reads the summary artifact once.
 - Focal Chunking: When inspecting code files, use targeted line slices (StartLine/EndLine) or symbol grep rather than loading entire multi-thousand-line files.
 - Supervisor Coordination: Do not poll subagent or task status in an active loop. Stop calling tools and rely on reactive wakeups.
+
+## 6. Shift-Left Two-Phase Verification (Jev System One)
+- Every file write or modification is intercepted in-memory before disk commit.
+- Phase 1 (Spec Gate): Jev certifies that the True/False specification contract for the file is rigorous, complete, and non-trivial.
+- Phase 2 (Code Gate): Jev mathematically validates that the proposed code satisfies the certified specification without stubs, mock bypasses, or unhandled errors.
+- Declare your specification contract in:
+  * Tool call Description (e.g., Description: 'Implements JWT RS256 verification and 401 error handler'),
+  * File header JSDoc (/** @aegis-contract @claim ... @true ... @false ... */),
+  * Or companion file (.<filename>.spec.json).
 `;
 
   if (!dryRun) {
@@ -175,6 +184,15 @@ export function ensureAntigravityMarkdown(targetDir, dryRun = false) {
 - Universal Research Sandboxing: For multi-file documentation (Obsidian vaults, markdown directories, PDF specs, Excel/CSV datasets, or multi-query web searches), do not dump raw files or scraped HTML into coordinator context. Delegate bulk research to an ephemeral subagent that produces a compact <1,500 token summary artifact (RESEARCH.md).
 - Focal Chunking: Read only necessary line slices (StartLine/EndLine) or symbol search rather than loading whole multi-thousand-line files.
 - Supervisor Coordination: Never poll subagents or tasks in an active loop. Rely on reactive wakeups or schedule timers.
+
+### 6. Shift-Left Two-Phase Verification (Jev System One)
+- Every file write or modification is intercepted in-memory before disk commit.
+- Phase 1 (Spec Gate): Jev certifies that the True/False specification contract for the file is rigorous, complete, and non-trivial.
+- Phase 2 (Code Gate): Jev mathematically validates that the proposed code satisfies the certified specification without stubs, mock bypasses, or unhandled errors.
+- Declare your specification contract in:
+  * Tool call Description (e.g., Description: 'Implements JWT RS256 verification and 401 error handler'),
+  * File header JSDoc (/** @aegis-contract @claim ... @true ... @false ... */),
+  * Or companion file (.<filename>.spec.json).
 `;
 
   if (!dryRun) {
