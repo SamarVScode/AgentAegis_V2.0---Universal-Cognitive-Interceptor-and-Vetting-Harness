@@ -289,6 +289,26 @@ export async function runInterceptor() {
       exitWithDecision({ allowed: false, reason: missingKeyMsg, mode, engine });
     }
 
+    // Step 0b: Infrastructure & Harness Anti-Tamper Isolation
+    // Prevents coding agents (Claude / Antigravity) from modifying, replacing, or accessing the harness directory
+    const isHarnessTarget = /(^|[/\\])(harness|\.aegis|\.agents)([/\\]|$)/i.test(targetFile);
+    if (isHarnessTarget && (isReadInspectionTool(toolName) || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit') || isDestructive)) {
+      const tamperMsg = `[JEV SECURITY VETO]: Access denied. The 'harness' infrastructure directory is protected and not accessible to coding agents.`;
+      console.error(tamperMsg);
+      recordDecision({
+        sessionId,
+        targetDir: effectiveWorkspace,
+        source: 'sensitive_guard',
+        decisionType: 'harness_tamper_veto',
+        toolName,
+        inputSummary: targetFile || cmdStr,
+        passed: false,
+        verdict: 'vetoed',
+        reason: tamperMsg
+      });
+      exitWithDecision({ allowed: false, reason: tamperMsg, mode, engine });
+    }
+
     // Dynamic intent resolution: Extract user task goal if missing or generic
     const userGoal = extractUserGoal({
       engine,

@@ -18,6 +18,8 @@ export const SENSITIVE_PATH_PATTERNS = [
   /(^|[/\\])\.aws[/\\]/i,                          // AWS credentials
   /(^|[/\\])\.config[/\\]gcloud[/\\]/i,            // GCP credentials
   /(^|[/\\])\.aegis-harness[/\\]/i,               // Harness session history (must not be readable by agent)
+  /(^|[/\\])\.aegis([/\\].*)?$/i,                 // Aegis audit logs and decision records
+  /(^|[/\\])harness([/\\].*)?$/i,                 // Harness infrastructure (must not be accessible to coding agents)
   /(^|[/\\])\.kube[/\\]/i                          // Kubernetes cluster configs
 ];
 
