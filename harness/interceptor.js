@@ -440,7 +440,7 @@ export async function runInterceptor() {
           : (userGoal || process.env.TASK_DESCRIPTION || 'Autonomous software engineering task');
 
         const stateOptions = {
-          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 1500) : null,
+          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 4000) : null,
           rollingHistory: session.rollingHistory || [],
           lastStderr: session.lastStderr || '',
           lastTestPassed: session.lastTestPassed ?? null,
@@ -569,6 +569,9 @@ export async function runInterceptor() {
           return;
         }
       } catch (artifactErr) {
+        if (artifactErr instanceof InterceptorExitSentinel || artifactErr?.name === 'InterceptorExitSentinel') {
+          throw artifactErr;
+        }
         console.warn(`[JEV WARN]: Artifact check failed to reach Jev (${artifactErr.message}); proceeding under fail-open.`);
       }
     }
@@ -644,6 +647,9 @@ export async function runInterceptor() {
           exitWithDecision({ allowed: false, reason: jevCheck.reason || 'High risk of destructive data loss.', mode, engine });
         }
       } catch (vetErr) {
+        if (vetErr instanceof InterceptorExitSentinel || vetErr?.name === 'InterceptorExitSentinel') {
+          throw vetErr;
+        }
         recordDecision({
           sessionId,
           source: 'jev_system_one',

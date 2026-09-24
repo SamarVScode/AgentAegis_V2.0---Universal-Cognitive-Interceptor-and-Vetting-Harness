@@ -343,9 +343,9 @@ export function collectState(
   }
   resolvedTask = resolvedTask.slice(0, 1500);
 
-  // Resolve Pillar 3: Target File AST (clamped to 1,500 chars)
+  // Resolve Pillar 3: Target File AST (clamped to 4,000 chars)
   const targetFileAst = options.workingFileContent
-    ? String(options.workingFileContent).slice(0, 1500)
+    ? String(options.workingFileContent).slice(0, 4000)
     : null;
 
   // Resolve Pillar 5: Causal Trajectory
