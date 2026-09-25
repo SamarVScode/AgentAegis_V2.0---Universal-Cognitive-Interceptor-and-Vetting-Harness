@@ -637,14 +637,16 @@ export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravit
   if (preIdx !== -1) target.PreToolUse[preIdx] = preEntry;
   else target.PreToolUse.push(preEntry);
 
-  if (!Array.isArray(target.PostToolUse)) target.PostToolUse = [];
-  const postEntry = { command: postToolCmd };
-  const postIdx = target.PostToolUse.findIndex(entry => {
-    const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
-    return cmd.includes('interceptor.js');
-  });
-  if (postIdx !== -1) target.PostToolUse[postIdx] = postEntry;
-  else target.PostToolUse.push(postEntry);
+  if (engine !== 'claude') {
+    if (!Array.isArray(target.PostToolUse)) target.PostToolUse = [];
+    const postEntry = { command: postToolCmd };
+    const postIdx = target.PostToolUse.findIndex(entry => {
+      const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
+      return cmd.includes('interceptor.js');
+    });
+    if (postIdx !== -1) target.PostToolUse[postIdx] = postEntry;
+    else target.PostToolUse.push(postEntry);
+  }
 
   if (!Array.isArray(target.Stop)) target.Stop = [];
   const stopEntry = { command: stopCmd };

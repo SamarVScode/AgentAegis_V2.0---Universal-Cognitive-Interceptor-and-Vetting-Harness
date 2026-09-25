@@ -132,7 +132,8 @@ export function safeParseJson(raw) {
   return {};
 }
 
-export async function readStdinJson() {
+export async function readStdinJson(timeoutMs = null) {
+  if (typeof timeoutMs === "number") return new Promise(r => setTimeout(() => r({}), timeoutMs));
   if (tty.isatty(0)) return {};
   try {
     const rawStr = fs.readFileSync(0, 'utf8');

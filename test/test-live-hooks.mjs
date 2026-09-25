@@ -14,6 +14,7 @@ console.log('1. Setting up fresh workspace:', tmpDir);
 // Initialize with aegis CLI
 const cliPath = path.join(rootDir, 'bin', 'cli.js');
 execSync(`node "${cliPath}" --target-dir "${tmpDir}" --all`, { stdio: 'pipe' });
+fs.writeFileSync(path.join(tmpDir, '.env'), 'TYPESAFE_API_KEY=apikey_live_hook_test_12345\n', 'utf8');
 
 // Verify generated Claude Code hooks
 const claudeSettings = JSON.parse(fs.readFileSync(path.join(tmpDir, '.claude', 'settings.json'), 'utf8'));
@@ -24,8 +25,8 @@ console.log('   Claude Code Stop command:', claudeStopCmd);
 
 // Verify generated Antigravity hooks
 const agHooks = JSON.parse(fs.readFileSync(path.join(tmpDir, '.agents', 'hooks.json'), 'utf8'));
-const agPreCmd = agHooks.hooks.PreToolUse[0].command;
-const agStopCmd = agHooks.hooks.Stop[0].command;
+const agPreCmd = agHooks.hooks.PreToolUse[0].hooks?.[0]?.command || agHooks.hooks.PreToolUse[0].command;
+const agStopCmd = agHooks.hooks.Stop[0].hooks?.[0]?.command || agHooks.hooks.Stop[0].command;
 console.log('3. Antigravity PreTool command:', agPreCmd);
 console.log('   Antigravity Stop command:', agStopCmd);
 
@@ -73,21 +74,16 @@ execSync(agPreCmd, {
 });
 console.log('6. Antigravity benign pre-tool execution: SUCCESS (exit 0)');
 
-// 7. Test live execution of Antigravity pre-tool hook with destructive input
-let agVetoCaught = false;
-try {
-  execSync(agPreCmd, {
-    cwd: agWorkingDir,
-    input: JSON.stringify({ toolCall: { name: 'run_command', args: { CommandLine: 'rm -rf /' } } }),
-    stdio: 'pipe'
-  });
-} catch (err) {
-  if (err.status === 2) {
-    agVetoCaught = true;
-    console.log('7. Antigravity destructive veto: CAUGHT WITH EXIT CODE 2');
-  }
-}
-assert(agVetoCaught, 'Antigravity hook must block rm -rf with exit code 2');
+// 7. Test live execution of Antigravity pre-tool hook with destructive input (structured JSON veto)
+const agRes = execSync(agPreCmd, {
+  cwd: agWorkingDir,
+  input: JSON.stringify({ toolCall: { name: 'run_command', args: { CommandLine: 'rm -rf /' } } }),
+  stdio: 'pipe',
+  encoding: 'utf8'
+});
+const parsedAgRes = JSON.parse(agRes.trim());
+assert(parsedAgRes.decision === 'deny', 'Antigravity hook must return decision: deny for rm -rf');
+console.log('7. Antigravity destructive veto: CAUGHT WITH DECISION: DENY');
 
 // Cleanup
 try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
