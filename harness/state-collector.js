@@ -1,3 +1,22 @@
+function readTranscriptTail(transcriptPath, maxBytes = 128 * 1024) {
+  try {
+    const stats = fs.statSync(transcriptPath);
+    if (stats.size <= maxBytes) {
+      return fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    }
+    const fd = fs.openSync(transcriptPath, 'r');
+    const buf = Buffer.alloc(maxBytes);
+    fs.readSync(fd, buf, 0, maxBytes, stats.size - maxBytes);
+    fs.closeSync(fd);
+    const text = buf.toString('utf8');
+    const firstNewline = text.indexOf('\n');
+    const cleanText = firstNewline !== -1 ? text.slice(firstNewline + 1) : text;
+    return cleanText.trim().split('\n');
+  } catch {
+    return [];
+  }
+}
+
 /**
  * State Collector (harness/state-collector.js)
  * 7-Pillar Precision Context Envelope Builder & SHA-256 History Hasher.
@@ -27,7 +46,7 @@ export function extractClaudeCodePrompt(transcriptPath) {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
 
   try {
-    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    const lines = readTranscriptTail(transcriptPath);
 
     for (let i = lines.length - 1; i >= 0; i--) {
       let entry;
@@ -76,7 +95,7 @@ export function extractClaudeCodePrompt(transcriptPath) {
 export function extractClaudeCodeAssistantResponse(transcriptPath) {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
   try {
-    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    const lines = readTranscriptTail(transcriptPath);
     for (let i = lines.length - 1; i >= 0; i--) {
       let entry;
       try { entry = JSON.parse(lines[i]); } catch { continue; }
@@ -99,7 +118,7 @@ export function extractClaudeCodeAssistantResponse(transcriptPath) {
 export function extractAntigravityAssistantResponse(transcriptPath) {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
   try {
-    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    const lines = readTranscriptTail(transcriptPath);
     for (let i = lines.length - 1; i >= 0; i--) {
       let entry;
       try { entry = JSON.parse(lines[i]); } catch { continue; }
@@ -146,7 +165,7 @@ export function extractAntigravityPrompt(transcriptPath) {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
 
   try {
-    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    const lines = readTranscriptTail(transcriptPath);
 
     for (let i = lines.length - 1; i >= 0; i--) {
       let entry;
@@ -239,7 +258,12 @@ export function compressToolHistory(history = []) {
     if (typeof entry === 'string') return entry;
     const tool = entry.tool || entry.proposed_tool || entry.name || 'tool';
     const target = entry.targetFile || entry.file_path || entry.target || entry.path || '';
-    const argsStr = JSON.stringify(entry.args || entry.tool_args || {});
+    let argsStr = '';
+    try {
+      argsStr = JSON.stringify(entry.args || entry.tool_args || {});
+    } catch {
+      argsStr = String(entry.args || entry.tool_args || '');
+    }
     const hash = crypto.createHash('sha256').update(argsStr).digest('hex').slice(0, 8);
     return `${tool}:${target ? target + ':' : ''}sha256(${hash})`;
   });
@@ -491,8 +515,10 @@ export function extractArtifactContract({
   workspaceRoot = process.cwd(),
   userGoal = ''
 } = {}) {
-  const baseName = path.basename(targetFile || '');
-  const dirName = targetFile ? path.dirname(targetFile) : '.';
+  // Item 29: Resolve targetFile against workspaceRoot when relative
+  const resolvedTarget = targetFile ? (path.isAbsolute(targetFile) ? targetFile : path.resolve(workspaceRoot, targetFile)) : '';
+  const baseName = path.basename(resolvedTarget || '');
+  const dirName = resolvedTarget ? path.dirname(resolvedTarget) : workspaceRoot;
 
   // Priority 1: Companion spec file
   if (targetFile) {

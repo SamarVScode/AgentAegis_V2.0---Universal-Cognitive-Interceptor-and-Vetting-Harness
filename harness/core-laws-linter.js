@@ -69,8 +69,15 @@ export function lintCoreLaws(codeString = '', filePath = '') {
     const trimmed = line.trim();
     if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('#')) return;
 
+    // Item 37: Strip inline comments, and for non-key rules, strip string literals to avoid false positives
+    const codeWithoutComments = line
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replace(/(?<!:)\/\/.*/g, '');
+    const codeWithoutStrings = codeWithoutComments.replace(/(["'`])(?:\\.|[^\\])*?\1/g, '""');
+
     for (const rule of activeRules) {
-      if (rule.pattern.test(line)) {
+      const targetText = rule.id === 'HARDCODED_PRIVATE_KEY' ? codeWithoutComments : codeWithoutStrings;
+      if (rule.pattern.test(targetText)) {
         violations.push({
           ruleId: rule.id,
           law: rule.law,

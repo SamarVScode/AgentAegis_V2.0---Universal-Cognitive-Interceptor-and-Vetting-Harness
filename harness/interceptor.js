@@ -91,9 +91,9 @@ export function safeParseJson(raw) {
     return JSON.parse(fixed);
   } catch {}
 
-  // 3. Fix single-quoted JSON (e.g. {'a': 'val', 'b': 2})
+  // 3. Fix single-quoted JSON (Item 34: preserve inner apostrophes)
   try {
-    const fixed = cleaned.replace(/'/g, '"');
+    const fixed = cleaned.replace(/'((?:\\'|[^'])*)'/g, (_, inner) => '"' + inner.replace(/"/g, '\\"') + '"');
     return JSON.parse(fixed);
   } catch {}
 
@@ -132,8 +132,7 @@ export function safeParseJson(raw) {
   return {};
 }
 
-export async function readStdinJson(timeoutMs = null) {
-  if (typeof timeoutMs === "number") return new Promise(r => setTimeout(() => r({}), timeoutMs));
+export async function readStdinJson() {
   if (tty.isatty(0)) return {};
   try {
     const rawStr = fs.readFileSync(0, 'utf8');
@@ -830,7 +829,9 @@ export async function runInterceptor() {
   exitWithDecision({ allowed: true, mode, engine });
 }
 
-if (process.argv[1] && process.argv[1].endsWith('interceptor.js')) {
+import { fileURLToPath } from 'url';
+const isDirectRun = process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) || process.argv[1].endsWith('interceptor.js'));
+if (isDirectRun) {
   runInterceptor().catch(err => {
     if (err instanceof InterceptorExitSentinel || err?.name === 'InterceptorExitSentinel') {
       return;

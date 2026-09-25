@@ -13,7 +13,7 @@ export const DEFAULT_AUDIT_FILENAME = 'decision-audit.jsonl';
 /**
  * Resolves the root audit directory for persistent logs (.aegis or session-specific)
  */
-export function getAuditLogPath(targetDir = process.cwd(), sessionId = null) {
+export function getAuditLogPath(targetDir = process.cwd()) {
   let resolvedDir = path.resolve(String(targetDir).replace(/^["']|["']$/g, ''));
   if (['.agents', '.claude', '.cursor'].includes(path.basename(resolvedDir))) {
     resolvedDir = path.dirname(resolvedDir);

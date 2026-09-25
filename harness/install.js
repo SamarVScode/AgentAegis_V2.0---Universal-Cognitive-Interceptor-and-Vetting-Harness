@@ -275,11 +275,11 @@ export function installClaudeHooks(targetDir, interceptorPath, dryRun = false) {
   if (!updated.hooks || typeof updated.hooks !== 'object') {
     updated.hooks = {};
   }
-  if (!Array.isArray(updated.hooks.PrePrompt)) updated.hooks.PrePrompt = [];
-  const prePromptHook = { matcher: '.*', hooks: [{ type: 'command', command: preInvocationCmd }] };
-  const prePromptIdx = updated.hooks.PrePrompt.findIndex(h => typeof h === 'object' && h.hooks?.[0]?.command?.includes('interceptor.js'));
-  if (prePromptIdx !== -1) updated.hooks.PrePrompt[prePromptIdx] = prePromptHook;
-  else updated.hooks.PrePrompt.push(prePromptHook);
+  if (!Array.isArray(updated.hooks.UserPromptSubmit)) updated.hooks.UserPromptSubmit = [];
+  const userPromptSubmitHook = { matcher: '.*', hooks: [{ type: 'command', command: preInvocationCmd }] };
+  const userPromptSubmitIdx = updated.hooks.UserPromptSubmit.findIndex(h => typeof h === 'object' && h.hooks?.[0]?.command?.includes('interceptor.js'));
+  if (userPromptSubmitIdx !== -1) updated.hooks.UserPromptSubmit[userPromptSubmitIdx] = userPromptSubmitHook;
+  else updated.hooks.UserPromptSubmit.push(userPromptSubmitHook);
 
   // Merge PreToolUse
   if (!Array.isArray(updated.hooks.PreToolUse)) updated.hooks.PreToolUse = [];
@@ -471,14 +471,16 @@ export function runInstall(options = {}) {
   if (sourceHarnessDir !== targetHarnessDir && !dryRun) {
     if (!fs.existsSync(targetHarnessDir)) fs.mkdirSync(targetHarnessDir, { recursive: true });
     const filesToCopy = fs.readdirSync(sourceHarnessDir);
+    let copiedCount = 0;
     for (const f of filesToCopy) {
       const srcFile = path.join(sourceHarnessDir, f);
       const destFile = path.join(targetHarnessDir, f);
       if (fs.statSync(srcFile).isFile()) {
         fs.copyFileSync(srcFile, destFile);
+        copiedCount++;
       }
     }
-    console.log(` Copied 11 harness modules into: ${targetHarnessDir}`);
+    console.log(` Copied ${copiedCount} harness modules into: ${targetHarnessDir}`);
   }
 
   // Determine active targets

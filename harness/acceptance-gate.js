@@ -29,7 +29,7 @@ export function safeSpawnAsync(commandStr, options = {}) {
 
     if (process.platform === 'win32') {
       executable = process.env.ComSpec || 'cmd.exe';
-      spawnArgs = ['/d', '/s', '/c', commandStr];
+      spawnArgs = ['/d', '/s', '/c', `"${commandStr}"`];
     } else {
       executable = tokens[0].replace(/^["']|["']$/g, '');
       spawnArgs = tokens.slice(1).map(t => t.replace(/^["']|["']$/g, ''));
@@ -45,6 +45,7 @@ export function safeSpawnAsync(commandStr, options = {}) {
     let child;
     try {
       child = spawn(executable, spawnArgs, {
+      windowsVerbatimArguments: process.platform === 'win32',
         cwd: options.cwd || process.cwd(),
         env: options.env || { ...process.env, CI: 'true', FORCE_COLOR: '0' },
         windowsHide: true,
@@ -56,7 +57,13 @@ export function safeSpawnAsync(commandStr, options = {}) {
 
     const timer = setTimeout(() => {
       timedOut = true;
-      try { child.kill('SIGTERM'); } catch {}
+      try {
+        if (process.platform === 'win32' && child.pid) {
+          spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
+        } else {
+          child.kill('SIGTERM');
+        }
+      } catch {}
     }, timeout);
 
     child.stdout?.on('data', chunk => {
@@ -114,8 +121,11 @@ export function extractVerifiableClaims(statementText = '') {
   const fileModifications = [];
   let match;
   while ((match = fileRegex.exec(statementText)) !== null) {
-    if (match[1] && !fileModifications.includes(match[1])) {
-      fileModifications.push(match[1]);
+    const candidate = match[1];
+    // Item 27: Filter out version numbers like 1.0, 2.1, v1.2
+    const isVersion = /^v?\d+\.\d+(\.\d+)?$/i.test(candidate);
+    if (candidate && !isVersion && !fileModifications.includes(candidate)) {
+      fileModifications.push(candidate);
     }
   }
 
@@ -222,14 +232,15 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     /delete\s+from\b/i,
     /truncate(\s+table)?\b/i
   ];
-  const textToCheck = `${agentStatement || ''}`;
-  for (const pattern of RESTRICTED_PATTERNS) {
-    if (pattern.test(textToCheck)) {
+  // Item 21: Only check for standalone destructive command executions, not narrative agent statements
+  if (!customCommand && agentStatement) {
+    const standaloneCmd = /^\s*(?:rm\s+-[a-z]*r[a-z]*f?|git\s+reset\b|drop\s+(?:table|database)|delete\s+from|truncate(?:\s+table)?)/im;
+    if (standaloneCmd.test(agentStatement)) {
       return {
         passed: false,
         stage: 'auth_pre_gate',
         hardVeto: true,
-        reason: 'Hard veto: restricted pattern detected in agent statement or command before Jev evaluation.',
+        reason: 'Hard veto: restricted pattern detected in agent statement before Jev evaluation.',
         probability: 0.0
       };
     }
@@ -292,7 +303,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
       if (err.killed || (typeof err.message === 'string' && err.message.includes('timed out'))) {
         isTimeout = true;
         exitCode = 124;
-      } else if (err.isMaxBuffer || err.code_name === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER') {
+      } else if (err.isMaxBuffer || err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || err.code === 'MAXBUFFER') {
         isMaxBuffer = true;
         exitCode = 1;
       } else {

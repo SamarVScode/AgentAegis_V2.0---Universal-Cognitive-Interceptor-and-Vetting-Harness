@@ -41,7 +41,7 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
   const trimmedStdout = stdout.trim();
 
   // 2. Detect echo spoofing (e.g. echo "All tests passed!" with exit 0)
-  if (/^["']?(all\s+tests?\s+passed|tests?\s+ok|success)["']?$/i.test(trimmedStdout) && trimmedStdout.split('\n').length <= 2) {
+  if (/^["']?(all\s+tests?\s+passed|tests?\s+ok|success)["']?$/im.test(trimmedStdout) && trimmedStdout.split('\n').length <= 2) {
     return {
       passed: false,
       spoofDetected: true,
@@ -202,7 +202,13 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
       if (/error TS\d+:/i.test(combined)) {
         return { passed: false, reason: 'TypeScript compilation errors detected in GAS backend.' };
       }
-      return { passed: true, testsRun: 1 };
+      const isBuildCheck = /clasp\s+(status|push)|tsc\s+--noEmit/i.test(combined) || !/test/i.test(combined);
+      return {
+        passed: true,
+        testsRun: 1,
+        isBuildVerification: isBuildCheck,
+        reason: isBuildCheck ? 'Google Apps Script build / manifest verified cleanly.' : 'GAS tests passed.'
+      };
     }
 
     case 'c': {
@@ -225,7 +231,17 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
     };
   }
 
-  // If no recognized framework telemetry pattern matched, reject unparseable output
+  // Item 25: Fallback for clean exit code 0 when runner produces unrecognized or quiet output without failure markers
+  if (exitCode === 0 && !/\b(FAIL|FAILED|AssertionError|Error:|Errors:|Fatal)\b/i.test(combined)) {
+    return {
+      passed: true,
+      testsRun: 1,
+      fallbackSuccess: true,
+      reason: 'Test command exited with code 0 and clean output.'
+    };
+  }
+
+  // If no recognized framework telemetry pattern matched and failures or unrecognized output present, reject
   return {
     passed: false,
     testsRun: 0,
