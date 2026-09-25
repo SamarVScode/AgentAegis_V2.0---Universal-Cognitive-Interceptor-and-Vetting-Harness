@@ -69,6 +69,79 @@ export function extractClaudeCodePrompt(transcriptPath) {
  * Strips <USER_REQUEST>, <ADDITIONAL_METADATA>, and <USER_SETTINGS_CHANGE> tags.
  * Clamps to 1,500 characters.
  */
+
+/**
+ * Extracts the last assistant response from a Claude Code JSONL session transcript.
+ */
+export function extractClaudeCodeAssistantResponse(transcriptPath) {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
+  try {
+    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      let entry;
+      try { entry = JSON.parse(lines[i]); } catch { continue; }
+      if (entry.type !== 'assistant') continue;
+      const content = entry.message?.content;
+      if (typeof content === 'string' && content.trim()) {
+        return content.trim();
+      } else if (Array.isArray(content)) {
+        const textBlock = content.find(b => b.type === 'text' && b.text);
+        if (textBlock?.text && textBlock.text.trim()) return textBlock.text.trim();
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * Extracts the last assistant response from an Antigravity JSONL session transcript.
+ */
+export function extractAntigravityAssistantResponse(transcriptPath) {
+  if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
+  try {
+    const lines = fs.readFileSync(transcriptPath, 'utf8').trim().split('\n');
+    for (let i = lines.length - 1; i >= 0; i--) {
+      let entry;
+      try { entry = JSON.parse(lines[i]); } catch { continue; }
+      if (entry.type === 'PLANNER_RESPONSE' || entry.source === 'MODEL') {
+        const content = entry.content || '';
+        if (content && typeof content === 'string' && content.trim()) {
+          return content.trim();
+        }
+      }
+    }
+  } catch {}
+  return null;
+}
+
+/**
+ * Unified Dispatcher: Extracts the last assistant response across engines.
+ */
+export function extractLastAssistantResponse({ engine, transcriptPath, conversationId } = {}) {
+  try {
+    if (engine === 'claude' || engine === 'claude-code') {
+      return extractClaudeCodeAssistantResponse(transcriptPath);
+    }
+    if (engine === 'antigravity') {
+      let agyPath = transcriptPath;
+      if (!agyPath || !fs.existsSync(agyPath)) {
+        if (conversationId && conversationId !== 'default') {
+          agyPath = path.join(
+            os.homedir(),
+            '.gemini', 'antigravity-cli', 'brain',
+            conversationId,
+            '.system_generated', 'logs', 'transcript.jsonl'
+          );
+        }
+      }
+      return extractAntigravityAssistantResponse(agyPath);
+    }
+    if (transcriptPath && fs.existsSync(transcriptPath)) {
+      return extractClaudeCodeAssistantResponse(transcriptPath) || extractAntigravityAssistantResponse(transcriptPath);
+    }
+  } catch {}
+  return null;
+}
 export function extractAntigravityPrompt(transcriptPath) {
   if (!transcriptPath || !fs.existsSync(transcriptPath)) return null;
 
@@ -239,6 +312,7 @@ export function collectState(
   scope = null,
   options = {}
 ) {
+  const targetDir = options.cwd || options.authorization?.workspace_root || process.cwd();
   let gitStatus = '';
   let gitDiffStat = '';
   let gitDiffApp = '';
@@ -247,6 +321,7 @@ export function collectState(
 
   try {
     const rawStatus = execSync('git status --porcelain', {
+      cwd: targetDir,
       encoding: 'utf8',
       timeout: 2000,
       maxBuffer: MAX_BUFFER,
@@ -263,6 +338,7 @@ export function collectState(
     }
 
     const rawDiffStat = execSync('git diff --stat', {
+      cwd: targetDir,
       encoding: 'utf8',
       timeout: 2000,
       maxBuffer: MAX_BUFFER,
@@ -280,6 +356,7 @@ export function collectState(
 
     // Exclude package lockfiles and capture top 40 lines
     gitDiffApp = execSync('git diff -U2 -- ":!package-lock.json" ":!yarn.lock" ":!pnpm-lock.yaml" ":!poetry.lock"', {
+      cwd: targetDir,
       encoding: 'utf8',
       timeout: 2000,
       maxBuffer: MAX_BUFFER,
@@ -333,7 +410,7 @@ export function collectState(
       engine: options.engine,
       transcriptPath: options.transcriptPath,
       conversationId,
-      cwd: options.cwd || process.cwd()
+      cwd: targetDir
     });
     if (extractedGoal) {
       resolvedTask = extractedGoal;
@@ -356,12 +433,12 @@ export function collectState(
 
   // Resolve Pillar 7: Authorization Boundary
   const authorizationBoundary = options.authorization || {
-    workspace_root: process.cwd(),
-    allowed_paths: [process.cwd()],
+    workspace_root: targetDir,
+    allowed_paths: [targetDir],
     restricted_patterns: ['rm -rf /', 'git reset --hard', 'DROP DATABASE']
   };
 
-  const workspaceInfo = detectWorkspaceEcosystem(process.cwd());
+  const workspaceInfo = detectWorkspaceEcosystem(targetDir);
 
   const rawState = {
     conversation_id: conversationId,

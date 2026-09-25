@@ -9,7 +9,7 @@ import fs from 'fs';
 import path from 'path';
 import { execSync } from 'child_process';
 import { fileURLToPath } from 'url';
-import { jevBooleanCheck } from '../harness/jev-client.js';
+import { callJevSystemOne } from '../harness/jev-client.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -26,7 +26,7 @@ async function main() {
   // 1. Gather git diff
   let gitDiff = '';
   try {
-    gitDiff = execSync('git diff -U3 -- harness/', { encoding: 'utf8' }).slice(0, 4000);
+    gitDiff = execSync('git diff -U3 -- harness/', { encoding: 'utf8' }).slice(0, 25000);
   } catch (err) {
     gitDiff = `Error capturing git diff: ${err.message}`;
   }
@@ -54,35 +54,46 @@ async function main() {
   console.log(`Automated Tests Status: ${testPassed ? '11/11 PASSED' : 'FAILED'}`);
 
   // 3. Formulate Jev Bayesian Evaluation
-  const assertion = `The proposed fixes for ${batchName} (${itemsDescription}) are correctly implemented, syntactically and logically sound, and preserve full test suite integrity without regressions.`;
-  const criteriaTrue = `All targeted issues in ${batchName} are cleanly resolved, edge cases are addressed, and all automated test suites pass with 100% success.`;
-  const criteriaFalse = `The code contains unhandled exceptions, regressions, broken syntax, failed tests, or incomplete implementations of the targeted items.`;
-
   const stateContext = {
     batch: batchName,
     itemsDescription,
     testPassed,
     testSummary: testOutput.slice(-1000).trim(),
-    gitDiff: gitDiff.slice(0, 15000),
+    gitDiff: gitDiff.slice(0, 20000),
     extraFiles
   };
 
   try {
-    const verdict = await jevBooleanCheck({
+    const res = await callJevSystemOne({
       state: JSON.stringify(stateContext, null, 2),
-      assertion,
-      criteriaTrue,
-      criteriaFalse,
-      isDestructive: false
+      questions: {
+        batch_adjudication: {
+          type: 'choice',
+          instructions: `Adjudicate the implementation of ${batchName} (${itemsDescription}). Decide if the code changes meet specifications and pass verification.`,
+          choices: ['approved', 'rejected'],
+          criteria: {
+            approved: `The code cleanly and correctly implements the targeted items (${itemsDescription}), all 11 automated test suites pass, syntax is valid, and functionality is preserved without regressions.`,
+            rejected: `The code contains unhandled exceptions, regressions, broken syntax, failed tests, or does not implement the targeted items.`
+          }
+        }
+      }
     });
 
+    const ans = res.answers?.batch_adjudication;
+    const choice = ans?.choice || 'rejected';
+    const approvedProb = ans?.probabilities?.approved ?? (choice === 'approved' ? 1.0 : 0.0);
+    const confidence = ans?.confidence ?? 1.0;
+    const isApproved = choice === 'approved' && approvedProb >= 0.50 && testPassed;
+
     console.log(`\n------------------------------------------------------`);
-    console.log(`Jev Decision: ${verdict.approved ? 'APPROVED' : 'VETOED'}`);
-    console.log(`Bayesian Probability: ${verdict.probability}`);
-    console.log(`Reason: ${verdict.reason}`);
+    console.log(`Jev Decision: ${isApproved ? 'APPROVED' : 'VETOED'}`);
+    console.log(`Choice: ${choice}`);
+    console.log(`Probability (approved): ${approvedProb}`);
+    console.log(`Confidence: ${confidence}`);
+    console.log(`Tokens: input=${res.usage?.input_tokens || 0}, output=${res.usage?.output_tokens || 0}`);
     console.log(`------------------------------------------------------\n`);
 
-    if (verdict.approved) {
+    if (isApproved) {
       process.exit(0);
     } else {
       process.exit(1);

@@ -206,6 +206,11 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     effectiveTargetDir = path.dirname(effectiveTargetDir);
   }
 
+  const session = (sessionId && typeof sessionId === 'object') ? sessionId : loadSession(sessionId || 'default');
+  if ((!process.env.TASK_DESCRIPTION || process.env.TASK_DESCRIPTION === 'Autonomous software engineering task') && session.taskDescription) {
+    process.env.TASK_DESCRIPTION = session.taskDescription;
+  }
+
   // Deterministic authorization pre-gate: hard veto if agentStatement
   // contains restricted patterns before any async work or Jev call.
   // Applies primarily to the Stop hook path where agentStatement arrives without
@@ -382,7 +387,6 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   // Triage stderr to filter benign warnings (Fix 5)
   const { isBenign, cleanedStderr } = triageStderr(stderr);
 
-  const session = (sessionId && typeof sessionId === 'object') ? sessionId : loadSession(sessionId || 'default');
 
   // Step 2: Jev Semantic Completion Gate (P >= 0.85)
   const jevState = {
@@ -394,7 +398,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     runner_summary: isNoContract ? "No test contract detected in workspace; claim reconciliation applied." : stdout.slice(-600).trim(),
     has_unhandled_stderr: !isBenign && cleanedStderr.length > 0,
     // 7-Pillar Precision Context Metadata
-    user_intent: (agentStatement || process.env.TASK_DESCRIPTION || 'Complete verified software engineering task').slice(0, 1500),
+    user_intent: (agentStatement || process.env.TASK_DESCRIPTION || session.taskDescription || 'Complete verified software engineering task').slice(0, 1500),
     test_runner_contract: {
       ecosystem: workspace.ecosystem,
       command: isNoContract ? "none" : testCommand,

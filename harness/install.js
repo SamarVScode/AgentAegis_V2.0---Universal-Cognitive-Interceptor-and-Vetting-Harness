@@ -42,6 +42,20 @@ export function ensureEnvFile(targetDir, dryRun = false) {
   const envPath = path.join(targetDir, '.env');
   const template = '# TypeSafe Aegis - Jev Cognitive Interceptor\n# Add your TypeSafe API Key below.\nTYPESAFE_API_KEY=your_typesafe_api_key_here\nAEGIS_SHIFT_LEFT=true\nAEGIS_FULL_AUDIT=true\n';
 
+  const gitignorePath = path.join(targetDir, '.gitignore');
+  if (!dryRun) {
+    if (fs.existsSync(gitignorePath)) {
+      const gitignoreContent = fs.readFileSync(gitignorePath, 'utf8');
+      const lines = gitignoreContent.split(/\r?\n/).map(l => l.trim());
+      if (!lines.includes('.env')) {
+        const needsNewline = gitignoreContent.length > 0 && !gitignoreContent.endsWith('\n');
+        fs.appendFileSync(gitignorePath, (needsNewline ? '\n' : '') + '.env\n', 'utf8');
+      }
+    } else {
+      fs.writeFileSync(gitignorePath, '.env\n', 'utf8');
+    }
+  }
+
   if (!fs.existsSync(envPath)) {
     if (!dryRun) {
       fs.writeFileSync(envPath, template, 'utf8');
@@ -326,6 +340,7 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
 
   const preInvocationCmd = `node ${cleanExecPath} --engine antigravity pre-invocation`;
   const preToolCmd = `node ${cleanExecPath} --engine antigravity pre-tool`;
+  const postToolCmd = `node ${cleanExecPath} --engine antigravity post-tool`;
   const stopCmd = `node ${cleanExecPath} --engine antigravity verify-gate`;
 
   const updated = { ...existing };
@@ -335,24 +350,65 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   if (!updated.hooks || typeof updated.hooks !== 'object') {
     updated.hooks = {};
   }
-  updated.hooks.PreInvocation = [{ type: 'command', command: preInvocationCmd }];
-  updated.hooks.PreToolUse = [
-    {
-      matcher: '.*',
-      hooks: [
-        {
-          type: 'command',
-          command: preToolCmd
-        }
-      ]
-    }
-  ];
-  updated.hooks.Stop = [
-    {
-      type: 'command',
-      command: stopCmd
-    }
-  ];
+
+  // PreInvocation
+  const preInvocationEntry = { type: 'command', command: preInvocationCmd };
+  if (!Array.isArray(updated.hooks.PreInvocation)) updated.hooks.PreInvocation = [];
+  const preInvIdx = updated.hooks.PreInvocation.findIndex(h => {
+    const cmd = h?.command || h?.hooks?.[0]?.command || '';
+    return cmd.includes('interceptor.js');
+  });
+  if (preInvIdx !== -1) updated.hooks.PreInvocation[preInvIdx] = preInvocationEntry;
+  else updated.hooks.PreInvocation.push(preInvocationEntry);
+
+  // PreToolUse
+  const preToolEntry = {
+    matcher: '.*',
+    hooks: [
+      {
+        type: 'command',
+        command: preToolCmd
+      }
+    ]
+  };
+  if (!Array.isArray(updated.hooks.PreToolUse)) updated.hooks.PreToolUse = [];
+  const preToolIdx = updated.hooks.PreToolUse.findIndex(h => {
+    const cmd = h?.command || h?.hooks?.[0]?.command || '';
+    return cmd.includes('interceptor.js');
+  });
+  if (preToolIdx !== -1) updated.hooks.PreToolUse[preToolIdx] = preToolEntry;
+  else updated.hooks.PreToolUse.push(preToolEntry);
+
+  // PostToolUse (Item 19)
+  const postToolEntry = {
+    matcher: '.*',
+    hooks: [
+      {
+        type: 'command',
+        command: postToolCmd
+      }
+    ]
+  };
+  if (!Array.isArray(updated.hooks.PostToolUse)) updated.hooks.PostToolUse = [];
+  const postToolIdx = updated.hooks.PostToolUse.findIndex(h => {
+    const cmd = h?.command || h?.hooks?.[0]?.command || '';
+    return cmd.includes('interceptor.js');
+  });
+  if (postToolIdx !== -1) updated.hooks.PostToolUse[postToolIdx] = postToolEntry;
+  else updated.hooks.PostToolUse.push(postToolEntry);
+
+  // Stop
+  const stopEntry = {
+    type: 'command',
+    command: stopCmd
+  };
+  if (!Array.isArray(updated.hooks.Stop)) updated.hooks.Stop = [];
+  const stopIdx = updated.hooks.Stop.findIndex(h => {
+    const cmd = h?.command || h?.hooks?.[0]?.command || '';
+    return cmd.includes('interceptor.js');
+  });
+  if (stopIdx !== -1) updated.hooks.Stop[stopIdx] = stopEntry;
+  else updated.hooks.Stop.push(stopEntry);
 
   const content = JSON.stringify(updated, null, 2) + '\n';
 
@@ -505,6 +561,7 @@ export function runInstall(options = {}) {
     };
     mainConfig.hooks = {
       PreToolUse: (rawHooks.PreToolUse || []).map(entry => ({ command: extractCmd(entry) })),
+      PostToolUse: (rawHooks.PostToolUse || []).map(entry => ({ command: extractCmd(entry) })),
       Stop: (rawHooks.Stop || []).map(entry => ({ command: extractCmd(entry) }))
     };
   }
@@ -562,6 +619,7 @@ export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravit
     ? resolvedInterceptor.replace(/^["']|["']$/g, '')
     : `"${resolvedInterceptor}"`;
   const preToolCmd = `node ${cleanInterceptor} --engine ${engine} pre-tool`;
+  const postToolCmd = `node ${cleanInterceptor} --engine ${engine} post-tool`;
   const stopCmd = `node ${cleanInterceptor} --engine ${engine} verify-gate`;
 
   const config = JSON.parse(JSON.stringify(existingConfig || {}));
@@ -576,6 +634,15 @@ export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravit
   });
   if (preIdx !== -1) target.PreToolUse[preIdx] = preEntry;
   else target.PreToolUse.push(preEntry);
+
+  if (!Array.isArray(target.PostToolUse)) target.PostToolUse = [];
+  const postEntry = { command: postToolCmd };
+  const postIdx = target.PostToolUse.findIndex(entry => {
+    const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
+    return cmd.includes('interceptor.js');
+  });
+  if (postIdx !== -1) target.PostToolUse[postIdx] = postEntry;
+  else target.PostToolUse.push(postEntry);
 
   if (!Array.isArray(target.Stop)) target.Stop = [];
   const stopEntry = { command: stopCmd };

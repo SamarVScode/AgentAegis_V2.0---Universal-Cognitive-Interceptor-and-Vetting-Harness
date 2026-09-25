@@ -16,7 +16,7 @@ import fs from 'fs';
 import tty from 'tty';
 import path from 'path';
 import { createHash } from 'crypto';
-import { collectState, extractUserGoal, extractArtifactContract, anchorCriteriaFalse } from './state-collector.js';
+import { collectState, extractUserGoal, extractArtifactContract, anchorCriteriaFalse, extractLastAssistantResponse } from './state-collector.js';
 import { checkCycle, clearHistory, loadSession, saveSession, reconstructShadowBuffer } from './cycle-detector.js';
 import { isDestructiveAction, jevBooleanCheck, isApiKeyConfigured } from './jev-client.js';
 import { evaluatePathSecurity, isReadInspectionTool, inspectCommandForSensitivePaths } from './sensitive-guard.js';
@@ -141,12 +141,27 @@ export async function readStdinJson(timeoutMs = null) {
     if (rawStr && rawStr.trim() && Object.keys(parsed).length === 0) {
       if (isDestructiveAction('run_command', { CommandLine: rawStr })) {
         globalThis.__currentOperationDestructive = true;
-        console.error('[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.');
-        process.exit(2);
+        const vetoReason = 'Raw input blocked by safety filter: Destructive pattern detected in unparsed payload.';
+        console.error(`[JEV SAFETY VETO]: ${vetoReason}`);
+        recordDecision({
+          sessionId: process.env.AEGIS_SESSION_ID || 'default',
+          targetDir: process.cwd(),
+          source: 'safety_filter',
+          decisionType: 'raw_destructive_veto',
+          toolName: 'unparsed',
+          inputSummary: rawStr.slice(0, 100),
+          passed: false,
+          verdict: 'vetoed',
+          reason: vetoReason
+        });
+        exitWithDecision({ allowed: false, reason: vetoReason, mode: 'pre-tool', engine });
       }
     }
     return parsed;
   } catch (err) {
+    if (err instanceof InterceptorExitSentinel || err?.name === 'InterceptorExitSentinel') {
+      throw err;
+    }
     return {};
   }
 }
@@ -233,8 +248,20 @@ export async function runInterceptor() {
           toolArgs = safeParseJson(arg2);
           if (arg2.trim() && Object.keys(toolArgs).length === 0) {
             if (isDestructiveAction('run_command', { CommandLine: arg2 })) {
-              console.error(`[JEV SAFETY VETO]: Raw input blocked by safety filter: Destructive pattern detected in payload.`);
-              process.exit(2);
+              const vetoReason = 'Raw input blocked by safety filter: Destructive pattern detected in payload.';
+              console.error(`[JEV SAFETY VETO]: ${vetoReason}`);
+              recordDecision({
+                sessionId,
+                targetDir: effectiveWorkspace,
+                source: 'safety_filter',
+                decisionType: 'raw_destructive_veto',
+                toolName,
+                inputSummary: arg2.slice(0, 100),
+                passed: false,
+                verdict: 'vetoed',
+                reason: vetoReason
+              });
+              exitWithDecision({ allowed: false, reason: vetoReason, mode, engine });
             }
           }
         } else {
@@ -293,8 +320,9 @@ export async function runInterceptor() {
 
     // Step 0b: Infrastructure & Harness Anti-Tamper Isolation
     // Prevents coding agents (Claude / Antigravity) from modifying, replacing, or accessing the harness directory
+    const isDevRepo = path.basename(effectiveWorkspace) === 'jev-mcp' || process.env.AEGIS_DEV_MODE === 'true';
     const isHarnessTarget = /(^|[/\\])(harness|\.aegis|\.agents)([/\\]|$)/i.test(targetFile);
-    if (isHarnessTarget && (isReadInspectionTool(toolName) || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit') || isDestructive)) {
+    if (!isDevRepo && isHarnessTarget && (isReadInspectionTool(toolName) || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit') || isDestructive)) {
       const tamperMsg = `[JEV SECURITY VETO]: Access denied. The 'harness' infrastructure directory is protected and not accessible to coding agents.`;
       console.error(tamperMsg);
       recordDecision({
@@ -318,8 +346,13 @@ export async function runInterceptor() {
       conversationId: sessionId,
       cwd: process.cwd()
     });
-    if (userGoal && (!process.env.TASK_DESCRIPTION || process.env.TASK_DESCRIPTION === 'Autonomous software engineering task')) {
-      process.env.TASK_DESCRIPTION = userGoal;
+    if (userGoal) {
+      const session = loadSession(sessionId);
+      session.taskDescription = userGoal;
+      saveSession(session, sessionId);
+      if (!process.env.TASK_DESCRIPTION || process.env.TASK_DESCRIPTION === 'Autonomous software engineering task') {
+        process.env.TASK_DESCRIPTION = userGoal;
+      }
     }
 
     // Virtual whole-file buffer reconstruction for replace_file_content (Fix 3)
@@ -701,10 +734,15 @@ export async function runInterceptor() {
     const TEST_RUNNER_PATTERN = /^(npm|yarn|pnpm|bun)\s+test|pytest|cargo\s+test|go\s+test|node\s+.*test|gradlew\s+test/i;
     const TEST_OUTPUT_FAIL_MARKERS = /passing|failing|failed|PASSED|FAILED|tests?\s+passed|test suite|AssertionError|FAIL\b/i;
 
-    if (stdinData.tool_name === 'Bash') {
-      const cmd = stdinData.tool_input?.command || '';
-      const output = stdinData.tool_result?.output || '';
-      const toolIsError = stdinData.tool_result?.is_error;
+    const toolLower = (stdinData.tool_name || stdinData.name || stdinData.tool || '').toLowerCase();
+    const isCommandTool = toolLower === 'bash' || toolLower === 'run_command' || toolLower.includes('command') || toolLower.includes('terminal');
+
+    if (isCommandTool) {
+      const cmd = stdinData.tool_input?.command || stdinData.tool_input?.CommandLine || stdinData.tool_input?.cmd || stdinData.command || '';
+      const output = stdinData.tool_result?.output || stdinData.tool_result?.stdout || stdinData.tool_result || stdinData.output || '';
+      const toolIsError = stdinData.tool_result?.is_error !== undefined
+        ? stdinData.tool_result.is_error
+        : (stdinData.isError || stdinData.error || false);
 
       if (TEST_RUNNER_PATTERN.test(cmd)) {
         const testSession = loadSession(sessionId);
@@ -716,7 +754,7 @@ export async function runInterceptor() {
             sessionId,
             source: 'test_runner',
             decisionType: 'post_tool_test_tracking',
-            toolName: 'Bash',
+            toolName: stdinData.tool_name || stdinData.name || 'command',
             inputSummary: cmd,
             passed: false,
             verdict: 'failed',
@@ -730,7 +768,7 @@ export async function runInterceptor() {
             sessionId,
             source: 'test_runner',
             decisionType: 'post_tool_test_tracking',
-            toolName: 'Bash',
+            toolName: stdinData.tool_name || stdinData.name || 'command',
             inputSummary: cmd,
             passed: true,
             verdict: 'passed',
@@ -749,7 +787,24 @@ export async function runInterceptor() {
   if (mode === 'verify-gate' || mode === 'preExit' || mode === 'pre-exit') {
     const stdinData = stdinPayload;
     const customCmd = arg1 || stdinData.command || stdinData.customCommand || null;
-    const agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
+    let agentStatement = stdinData.statement || stdinData.message || stdinData.final_response || arg2 || null;
+
+    const session = loadSession(sessionId);
+
+    // Item 8: Load session.taskDescription when process.env.TASK_DESCRIPTION is empty or generic
+    if ((!process.env.TASK_DESCRIPTION || process.env.TASK_DESCRIPTION === 'Autonomous software engineering task') && session.taskDescription) {
+      process.env.TASK_DESCRIPTION = session.taskDescription;
+    }
+
+    // Item 20: In verify-gate mode, if agentStatement is missing, fallback to extractLastAssistantResponse || session.taskDescription
+    if (!agentStatement) {
+      agentStatement = session.lastAssistantResponse || extractLastAssistantResponse({
+        engine,
+        transcriptPath: stdinPayload.transcript_path,
+        conversationId: sessionId
+      }) || session.taskDescription || null;
+    }
+
     const gateResult = await verifyAcceptanceGate(customCmd, effectiveWorkspace, agentStatement, sessionId);
 
     // Stage 2 decision already recorded in verifyAcceptanceGate

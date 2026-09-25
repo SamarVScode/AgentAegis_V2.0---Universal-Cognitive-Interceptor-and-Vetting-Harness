@@ -142,10 +142,13 @@ export function loadSession(sessionId = 'default') {
       const raw = fs.readFileSync(stateFile, 'utf8');
       const data = JSON.parse(raw);
       if (data && typeof data === 'object') {
-        session.rollingHistory = Array.isArray(data.rollingHistory) ? data.rollingHistory : [];
-        session.fileEditSnapshots = data.fileEditSnapshots && typeof data.fileEditSnapshots === 'object'
-          ? data.fileEditSnapshots
-          : {};
+        session = {
+          ...data,
+          rollingHistory: Array.isArray(data.rollingHistory) ? data.rollingHistory : [],
+          fileEditSnapshots: data.fileEditSnapshots && typeof data.fileEditSnapshots === 'object'
+            ? data.fileEditSnapshots
+            : {}
+        };
       }
     } catch {}
   }

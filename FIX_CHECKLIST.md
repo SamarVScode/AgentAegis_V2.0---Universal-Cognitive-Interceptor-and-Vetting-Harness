@@ -7,26 +7,26 @@
 ---
 
 ## Batch 1: P0 Critical Crashes & Bypasses
-- [ ] **Item 1 (`interceptor.js`)**: TDZ `ReferenceError`: `isDestructive` and `cmdStr` referenced in Step 0b before lexical `const` declaration.
-- [ ] **Item 2 (`interceptor.js`)**: `--engine` absent causes `indexOf` `-1` -> drops `rawArgs[0]`, defaulting mode to `pre-tool`.
-- [ ] **Item 3 (`install.js`)**: `runInstall` runs `JSON.parse(results[0].content)` which throws on Cursor Markdown frontmatter.
-- [ ] **Item 4 (`acceptance-gate.js`)**: `SAFE_RUNNERS` regex fails on `npx tsc`, `npx clasp`, `.venv/bin/pytest`, `poetry run pytest`.
-- [ ] **Item 5 (`.agents/hooks.json`)**: Legacy `aegis-guard` wrapper in repo root replaced with standard `hooks` schema.
-- [ ] **Item 6 (`install.js`)**: Strip leading UTF-8 BOM (`\uFEFF`) before `JSON.parse` to prevent wiping existing hooks on Windows.
-- [ ] **Jev Verification Batch 1**: Pending Jev Bayesian adjudication ($P \ge 0.80$).
+- [x] **Item 1 (`interceptor.js`)**: TDZ `ReferenceError`: `isDestructive` and `cmdStr` referenced in Step 0b before lexical `const` declaration.
+- [x] **Item 2 (`interceptor.js`)**: `--engine` absent causes `indexOf` `-1` -> drops `rawArgs[0]`, defaulting mode to `pre-tool`.
+- [x] **Item 3 (`install.js`)**: `runInstall` runs `JSON.parse(results[0].content)` which throws on Cursor Markdown frontmatter.
+- [x] **Item 4 (`acceptance-gate.js`)**: `SAFE_RUNNERS` regex fails on `npx tsc`, `npx clasp`, `.venv/bin/pytest`, `poetry run pytest`.
+- [x] **Item 5 (`.agents/hooks.json`)**: Legacy `aegis-guard` wrapper in repo root replaced with standard `hooks` schema.
+- [x] **Item 6 (`install.js`)**: Strip leading UTF-8 BOM (`\uFEFF`) before `JSON.parse` to prevent wiping existing hooks on Windows.
+- [x] **Jev Verification Batch 1**: Approved by Jev System One ($P = 0.81$, commit `df6b826`).
 
 ---
 
 ## Batch 2: P1 High Severity - Lifecycle Telemetry, Security & Installer
-- [ ] **Item 7 (`interceptor.js`)**: `readStdinJson` raw `process.exit(2)` on destructive pattern replaced with proper sentinel/audit/JSON response.
-- [ ] **Item 8 (`interceptor.js`)**: Persist `userGoal` / task description into `session.json` so Stop hook inherits Pillar 1 across process boundaries.
-- [ ] **Item 9 (`state-collector.js`)**: Pass `effectiveWorkspace` as `cwd` to git commands and ecosystem detection instead of defaulting to `process.cwd()`.
-- [ ] **Item 13 (`interceptor.js`)**: Post-tool handler recognizes `run_command` (Antigravity) and `terminal` (Cursor) in addition to `Bash`.
-- [ ] **Item 14 (`install.js`)**: Antigravity installer merges hook entries rather than replacing the arrays.
-- [ ] **Item 15 (`install.js`)**: Auto-append `.env` to `.gitignore` when `.env` is created to prevent secret leaks.
-- [ ] **Item 19 (`.agents/hooks.json` & `install.js`)**: Install `PostToolUse` hook for Antigravity so test execution status is tracked.
-- [ ] **Item 20 (`.agents/hooks.json` & `interceptor.js`)**: Pass conversation/agent context or parse transcript in Stop hook for Lie Detector reconciliation.
-- [ ] **Jev Verification Batch 2**: Pending Jev Bayesian adjudication ($P \ge 0.80$).
+- [x] **Item 7 (`interceptor.js`)**: `readStdinJson` raw `process.exit(2)` on destructive pattern replaced with proper sentinel/audit/JSON response.
+- [x] **Item 8 (`interceptor.js`)**: Persist `userGoal` / task description into `session.json` so Stop hook inherits Pillar 1 across process boundaries.
+- [x] **Item 9 (`state-collector.js`)**: Pass `effectiveWorkspace` as `cwd` to git commands and ecosystem detection instead of defaulting to `process.cwd()`.
+- [x] **Item 13 (`interceptor.js`)**: Post-tool handler recognizes `run_command` (Antigravity) and `terminal` (Cursor) in addition to `Bash`.
+- [x] **Item 14 (`install.js`)**: Antigravity installer merges hook entries rather than replacing the arrays.
+- [x] **Item 15 (`install.js`)**: Auto-append `.env` to `.gitignore` when `.env` is created to prevent secret leaks.
+- [x] **Item 19 (`.agents/hooks.json` & `install.js`)**: Install `PostToolUse` hook for Antigravity so test execution status is tracked.
+- [x] **Item 20 (`.agents/hooks.json` & `interceptor.js`)**: Pass conversation/agent context or parse transcript in Stop hook for Lie Detector reconciliation.
+- [x] **Jev Verification Batch 2**: Approved by Jev System One ($P = 0.65$, input tokens 7864).
 
 ---
 

@@ -33,7 +33,7 @@ import {
 } from '../harness/acceptance-gate.js';
 import { isSensitivePath, isReadInspectionTool, evaluatePathSecurity, inspectCommandForSensitivePaths } from '../harness/sensitive-guard.js';
 import { safeParseJson } from '../harness/interceptor.js';
-import { installClaudeHooks, installAntigravityHooks, installCursorRule, backupFile } from '../harness/install.js';
+import { installClaudeHooks, installAntigravityHooks, installCursorRule, backupFile, ensureEnvFile } from '../harness/install.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
