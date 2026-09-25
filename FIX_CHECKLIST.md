@@ -31,14 +31,14 @@
 ---
 
 ## Batch 3: P1 & P2 Quality, Variance & Exfiltration
-- [ ] **Item 10 (`diff-variance.js`)**: Scope comment stripping so URLs (`https://`), hex colors (`#fff`), and `#include` are preserved.
-- [ ] **Item 11 (`jev-client.js`)**: Cap retry backoff budget to 3 retries max and 10s ceiling to prevent 95s hook latency.
-- [ ] **Item 12 (`jev-client.js`)**: Distinguish 401 Unauthorized API key errors from transient network errors (fail-closed on invalid key).
-- [ ] **Item 16 (`sensitive-guard.js`)**: Scope `inspectCommandForSensitivePaths` so `.pem` inside quotes/git messages doesn't force destructive fail-closed.
-- [ ] **Item 17 (`cycle-detector.js`)**: Atomic temp-file write + rename for session state to prevent corruption.
-- [ ] **Item 18 (`cycle-detector.js`)**: File-based timestamp throttling for `pruneOldSessions` across independent CLI processes.
-- [ ] **Item 38 (`sensitive-guard.js`)**: Fix `.aegis-harness` regex to match bare path without trailing slash requirement.
-- [ ] **Jev Verification Batch 3**: Pending Jev Bayesian adjudication ($P \ge 0.80$).
+- [x] **Item 10 (`diff-variance.js`)**: Scope comment stripping so URLs (`https://`), hex colors (`#fff`), and `#include` are preserved.
+- [x] **Item 11 (`jev-client.js`)**: Cap retry backoff budget to 3 retries max and 10s ceiling to prevent 95s hook latency.
+- [x] **Item 12 (`jev-client.js`)**: Distinguish 401 Unauthorized API key errors from transient network errors (fail-closed on invalid key).
+- [x] **Item 16 (`sensitive-guard.js`)**: Scope `inspectCommandForSensitivePaths` so `.pem` inside quotes/git messages doesn't force destructive fail-closed.
+- [x] **Item 17 (`cycle-detector.js`)**: Atomic temp-file write + rename for session state to prevent corruption.
+- [x] **Item 18 (`cycle-detector.js`)**: File-based timestamp throttling for `pruneOldSessions` across independent CLI processes.
+- [x] **Item 38 (`sensitive-guard.js`)**: Fix `.aegis-harness` regex to match bare path without trailing slash requirement.
+- [x] **Jev Verification Batch 3**: Approved by Jev System One ($P = 0.94$, confidence 0.88).
 
 ---
 

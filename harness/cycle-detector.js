@@ -91,10 +91,17 @@ export function reconstructShadowBuffer(targetFile = '', targetContent = '', rep
  * Prunes old session directories from .jev/
  */
 export function pruneOldSessions(maxSessions = 20, maxAgeHours = 48, baseDir = null) {
+  const jevDir = baseDir || path.join(os.homedir(), '.aegis-harness');
+  const markerFile = path.join(jevDir, '.last_prune');
+  try {
+    if (fs.existsSync(markerFile)) {
+      const stats = fs.statSync(markerFile);
+      if (Date.now() - stats.mtimeMs < 60000) return;
+    }
+  } catch {}
   if (Date.now() - lastPruneTime < 60000) return;
   lastPruneTime = Date.now();
   try {
-    const jevDir = baseDir || path.join(os.homedir(), '.aegis-harness');
     if (!fs.existsSync(jevDir)) return;
 
     const entries = fs.readdirSync(jevDir, { withFileTypes: true });
@@ -117,6 +124,15 @@ export function pruneOldSessions(maxSessions = 20, maxAgeHours = 48, baseDir = n
         sessionDirs.push({ name: entry.name, path: dirPath, mtimeMs });
       } catch {}
     }
+
+    try {
+      const nowSec = Date.now() / 1000;
+      if (fs.existsSync(markerFile)) {
+        fs.utimesSync(markerFile, nowSec, nowSec);
+      } else {
+        fs.writeFileSync(markerFile, String(Date.now()), 'utf8');
+      }
+    } catch {}
 
     sessionDirs.sort((a, b) => b.mtimeMs - a.mtimeMs);
 
@@ -157,11 +173,16 @@ export function loadSession(sessionId = 'default') {
 
 export function saveSession(session, sessionId = 'default') {
   pruneOldSessions();
-  const { stateFile, tmpFile } = getSessionPaths(sessionId);
+  const { stateFile } = getSessionPaths(sessionId);
+  const tmpFile = `${stateFile}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
   try {
     fs.writeFileSync(tmpFile, JSON.stringify(session, null, 2), 'utf8');
     fs.renameSync(tmpFile, stateFile);
-  } catch {}
+  } catch {} finally {
+    try {
+      if (fs.existsSync(tmpFile)) fs.unlinkSync(tmpFile);
+    } catch {}
+  }
 }
 
 /**
@@ -170,16 +191,27 @@ export function saveSession(session, sessionId = 'default') {
  * - Trivial churn (<15% variance): Hard breaker trips at 3 repeats.
  * - Substantive edits (>=15% variance): Breaker allows up to 5 repeats.
  */
-export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff = '', sessionId = 'default') {
+export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff = '', sessionId = 'default', isMutation = null) {
   const session = loadSession(sessionId);
   const key = `${toolName}:${targetFile || ''}`;
+
+  const lowerTool = (toolName || '').toLowerCase();
+  const isReadOnly = isMutation === false || (isMutation === null && (
+    lowerTool === 'view_file' ||
+    lowerTool === 'read_file' ||
+    lowerTool === 'read_url_content' ||
+    lowerTool === 'read_resource' ||
+    lowerTool === 'grep' ||
+    lowerTool === 'search'
+  ));
+  const effectiveMutation = isMutation !== null ? isMutation : !isReadOnly;
 
   // Analyze diff variance for file mutations
   const prevSnapshot = session.fileEditSnapshots[targetFile] || '';
   const editClassification = classifyEditVariance(prevSnapshot, currentContentOrDiff || '');
 
-  // Update snapshot if content is provided
-  if (currentContentOrDiff && targetFile) {
+  // Update snapshot if content is provided and this is an actual file mutation
+  if (effectiveMutation && currentContentOrDiff && targetFile) {
     session.fileEditSnapshots[targetFile] = String(currentContentOrDiff).slice(0, 25000);
   }
 
@@ -187,7 +219,8 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
     key,
     tool: toolName,
     targetFile,
-    variance: editClassification.variance,
+    isMutation: effectiveMutation,
+    variance: effectiveMutation ? editClassification.variance : 1.0,
     timestamp: Date.now()
   });
 
@@ -227,8 +260,8 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
     repeatCount = count;
   }
 
-  // 1. Check Consecutive Edits on the same file with diff variance
-  if (targetFile && len >= 2) {
+  // 1. Check Consecutive Edits on the same file with diff variance (skipped for read-only inspections)
+  if (effectiveMutation && targetFile && len >= 2) {
     if (repeatCount >= allowed) {
       const critique = `[JEV CYCLE VETO]: You have modified '${targetFile}' ${repeatCount} consecutive times with ` +
         `${editClassification.category === 'trivial_churn' ? '<15% diff variance (trivial churn)' : 'unresolved test failures'}.\n` +
@@ -297,7 +330,7 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
   }
 
   // 3. Oscillating ping-pong cycle detection (A -> B -> A -> B)
-  if (len >= 4) {
+  if (effectiveMutation && len >= 4) {
     const a1 = history[len - 1]?.key;
     const b1 = history[len - 2]?.key;
     const a2 = history[len - 3]?.key;
@@ -313,7 +346,7 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
   }
 
   // 4. Triangular circular loop (A -> B -> C -> A -> B -> C)
-  if (len >= 6) {
+  if (effectiveMutation && len >= 6) {
     const slice1 = `${history[len - 1]?.key}|${history[len - 2]?.key}|${history[len - 3]?.key}`;
     const slice2 = `${history[len - 4]?.key}|${history[len - 5]?.key}|${history[len - 6]?.key}`;
     if (slice1 === slice2) {

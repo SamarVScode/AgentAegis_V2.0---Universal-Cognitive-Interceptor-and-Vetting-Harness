@@ -419,7 +419,9 @@ export async function runInterceptor() {
     }
 
     // Step 2: Diff Variance Cycle Detector & Thrashing Circuit Breaker (Universal)
-    const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId);
+    const isReadOnly = isReadInspectionTool(toolName) || toolName === 'view_file' || toolName === 'read_file';
+    const isMutation = !isReadOnly && Boolean(wholeFileContent || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit'));
+    const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId, isMutation);
     if (cycle.isThrashing) {
       recordDecision({
         sessionId,
@@ -473,7 +475,7 @@ export async function runInterceptor() {
           : (userGoal || process.env.TASK_DESCRIPTION || 'Autonomous software engineering task');
 
         const stateOptions = {
-          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 4000) : null,
+          workingFileContent: wholeFileContent ? wholeFileContent.slice(0, 30000) : null,
           rollingHistory: session.rollingHistory || [],
           lastStderr: session.lastStderr || '',
           lastTestPassed: session.lastTestPassed ?? null,

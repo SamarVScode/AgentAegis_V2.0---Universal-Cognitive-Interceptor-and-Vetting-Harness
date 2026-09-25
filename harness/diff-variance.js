@@ -49,8 +49,8 @@ export function levenshteinDistance(a = '', b = '') {
 export function normalizeStructure(text = '') {
   return String(text || '')
     .replace(/\/\*[\s\S]*?\*\//g, '') // strip block comments
-    .replace(/\/\/.*/g, '')           // strip line comments
-    .replace(/#.*/g, '')              // strip python/shell comments
+    .replace(/(?<!:)\/\/.*/g, '')     // strip line comments preserving URLs
+    .replace(/(^|\s)#(?![0-9a-fA-F]{3,8}\b|include|define|pragma|ifdef|ifndef|endif\b).*/gm, '') // strip comments preserving preprocessor & hex colors
     .replace(/\s+/g, ' ')             // collapse whitespace
     .trim();
 }

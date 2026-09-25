@@ -173,6 +173,18 @@ export function isDestructiveAction(toolNameOrState, maybeToolArgs = {}) {
  * Benign operations -> Fail-open with warning.
  */
 export function handleBipartiteFailSafe(isDestructive, error) {
+  const isAuthError = /401|unauthorized|invalid api key|neither typesafe_api_key/i.test(error?.message || '');
+  if (isAuthError) {
+    return {
+      approved: false,
+      isHazard: true,
+      timedOut: false,
+      fallback: true,
+      probability: 0.0,
+      reason: '[AEGIS GUARD FATAL]: Unauthorized or invalid API key. Hard fail-closed enforced.'
+    };
+  }
+
   const isTimeout = error?.name === 'AbortError' || error?.code === 'ETIMEDOUT' || /timed out/i.test(error?.message || '');
 
   if (isDestructive) {
@@ -205,7 +217,7 @@ export async function callJevSystemOne({
   apiKey,
   model = DEFAULT_MODEL,
   timeoutMs = DEFAULT_TIMEOUT_MS,
-  maxRetries = 6
+  maxRetries = 3
 }) {
   const resolvedApiKey = apiKey || process.env.TYPESAFE_API_KEY || process.env.OPENROUTER_API_KEY;
   if (!resolvedApiKey) {
@@ -258,7 +270,7 @@ export async function callJevSystemOne({
       if (!response.ok) {
         const isTransient = response.status === 429 || response.status === 503 || response.status === 502 || response.status === 529;
         if (isTransient && attempt < maxRetries) {
-          const delay = Math.pow(2, attempt) * 1500;
+          const delay = Math.min(Math.pow(2, attempt) * 1000, 4000);
           await new Promise(r => setTimeout(r, delay));
           continue;
         }
@@ -276,7 +288,7 @@ export async function callJevSystemOne({
       }
       if (attempt === maxRetries) throw err;
       lastError = err;
-      const delay = Math.pow(2, attempt) * 1500;
+      const delay = Math.min(Math.pow(2, attempt) * 1000, 4000);
       await new Promise(r => setTimeout(r, delay));
     }
   }
