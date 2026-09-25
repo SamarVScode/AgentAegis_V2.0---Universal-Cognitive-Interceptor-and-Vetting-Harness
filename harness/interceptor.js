@@ -377,7 +377,7 @@ export async function runInterceptor() {
     if (cmdStr) {
       const sensitiveInCmd = inspectCommandForSensitivePaths(cmdStr);
       if (sensitiveInCmd.isSensitive) {
-        const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION, true);
+        const secResult = await evaluatePathSecurity('run_command', cmdStr, process.env.TASK_DESCRIPTION, true, effectiveWorkspace);
         if (!secResult.approved) {
           recordDecision({
             sessionId,
@@ -397,7 +397,7 @@ export async function runInterceptor() {
 
     // Step 1: Sensitive Credential Read Guard (Layer 1 Fastpath vs Layer 2 Security)
     if (isReadInspectionTool(toolName)) {
-      const secResult = await evaluatePathSecurity(toolName, targetFile, process.env.TASK_DESCRIPTION);
+      const secResult = await evaluatePathSecurity(toolName, targetFile, process.env.TASK_DESCRIPTION, false, effectiveWorkspace);
       if (secResult.fastpath) {
         // Fastpath approved: 0 tokens, 0ms latency
         exitWithDecision({ allowed: true, mode, engine });

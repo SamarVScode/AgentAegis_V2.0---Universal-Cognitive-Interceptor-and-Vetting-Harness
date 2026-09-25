@@ -84,7 +84,10 @@ export function isSensitivePath(targetPath = '', workspaceDir = process.cwd()) {
   const customPatterns = getCustomDenyPatterns(workspaceDir);
   const allPatterns = [...SENSITIVE_PATH_PATTERNS, ...customPatterns];
 
-  const isDevRepo = path.basename(workspaceDir) === 'jev-mcp' || process.env.AEGIS_DEV_MODE === 'true';
+  const isDevRepo = path.basename(workspaceDir) === 'jev-mcp' ||
+    normalized.includes('/jev-mcp/') ||
+    rawNormalized.includes('/jev-mcp/') ||
+    process.env.AEGIS_DEV_MODE === 'true';
   const effectivePatterns = isDevRepo ? allPatterns.filter(p => !p.source.includes('harness')) : allPatterns;
 
   for (const pattern of effectivePatterns) {
@@ -143,11 +146,11 @@ export function inspectCommandForSensitivePaths(cmdStr = '', workspaceDir = proc
  * Fastpath: Benign source files are approved with 0 tokens and 0 latency.
  * Escalation: Sensitive patterns trigger Jev security classifier.
  */
-export async function evaluatePathSecurity(toolName = '', targetPath = '', taskContext = '', forceSensitive = false) {
+export async function evaluatePathSecurity(toolName = '', targetPath = '', taskContext = '', forceSensitive = false, workspaceDir = process.cwd()) {
   const normalizedPath = targetPath ? path.normalize(String(targetPath)).replace(/\\/g, '/').replace(/^\.\//, '') : '';
   const isRead = isReadInspectionTool(toolName);
-  const cmdSensitive = inspectCommandForSensitivePaths(targetPath).isSensitive;
-  const isSensitive = Boolean(forceSensitive) || isSensitivePath(normalizedPath) || isSensitivePath(targetPath) || cmdSensitive;
+  const cmdSensitive = inspectCommandForSensitivePaths(targetPath, workspaceDir).isSensitive;
+  const isSensitive = Boolean(forceSensitive) || isSensitivePath(normalizedPath, workspaceDir) || isSensitivePath(targetPath, workspaceDir) || cmdSensitive;
 
   // Fastpath: If read operation targets standard code and not sensitive, pass at 0 tokens
   if (isRead && !isSensitive) {

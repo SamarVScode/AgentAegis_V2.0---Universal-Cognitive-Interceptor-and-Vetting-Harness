@@ -468,18 +468,28 @@ export function runInstall(options = {}) {
   // Copy harness folder if installing into an external target
   const sourceHarnessDir = path.resolve(__dirname);
   const targetHarnessDir = path.resolve(targetDir, 'harness');
-  if (sourceHarnessDir !== targetHarnessDir && !dryRun) {
-    if (!fs.existsSync(targetHarnessDir)) fs.mkdirSync(targetHarnessDir, { recursive: true });
-    const filesToCopy = fs.readdirSync(sourceHarnessDir);
-    let copiedCount = 0;
-    for (const f of filesToCopy) {
-      const srcFile = path.join(sourceHarnessDir, f);
-      const destFile = path.join(targetHarnessDir, f);
-      if (fs.statSync(srcFile).isFile()) {
-        fs.copyFileSync(srcFile, destFile);
-        copiedCount++;
+  const isSameDir = process.platform === 'win32'
+    ? path.resolve(sourceHarnessDir).toLowerCase() === path.resolve(targetHarnessDir).toLowerCase()
+    : path.resolve(sourceHarnessDir) === path.resolve(targetHarnessDir);
+
+  if (!isSameDir && !dryRun) {
+    const copyDirRecursive = (src, dest) => {
+      if (!fs.existsSync(dest)) fs.mkdirSync(dest, { recursive: true });
+      let count = 0;
+      const entries = fs.readdirSync(src, { withFileTypes: true });
+      for (const entry of entries) {
+        const srcPath = path.join(src, entry.name);
+        const destPath = path.join(dest, entry.name);
+        if (entry.isDirectory()) {
+          count += copyDirRecursive(srcPath, destPath);
+        } else if (entry.isFile()) {
+          fs.copyFileSync(srcPath, destPath);
+          count++;
+        }
       }
-    }
+      return count;
+    };
+    const copiedCount = copyDirRecursive(sourceHarnessDir, targetHarnessDir);
     console.log(` Copied ${copiedCount} harness modules into: ${targetHarnessDir}`);
   }
 
@@ -578,7 +588,12 @@ export function runInstall(options = {}) {
 }
 
 // CLI handler
-if (process.argv[1] && path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))) {
+const isDirectCli = process.argv[1] && (
+  process.platform === 'win32'
+    ? path.resolve(process.argv[1]).toLowerCase() === path.resolve(fileURLToPath(import.meta.url)).toLowerCase()
+    : path.resolve(process.argv[1]) === path.resolve(fileURLToPath(import.meta.url))
+);
+if (isDirectCli) {
   const args = process.argv.slice(2);
   let dryRun = false;
   let targetDir = process.cwd();
@@ -628,34 +643,38 @@ export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravit
   const usesNestedHooks = config.hooks && typeof config.hooks === 'object';
   const target = usesNestedHooks ? config.hooks : (config.PreToolUse || config.Stop ? config : (config.hooks = {}));
 
+  const getCmd = (entry) => {
+    if (typeof entry === 'string') return entry;
+    if (entry?.command) return entry.command;
+    if (entry?.hooks?.[0]?.command) return entry.hooks[0].command;
+    return '';
+  };
+
+  const updateOrPushHook = (arr, cmd) => {
+    const idx = arr.findIndex(entry => getCmd(entry).includes('interceptor.js'));
+    if (idx !== -1) {
+      if (arr[idx]?.hooks?.[0]) {
+        arr[idx].hooks[0].command = cmd;
+      } else if (typeof arr[idx] === 'object') {
+        arr[idx].command = cmd;
+      } else {
+        arr[idx] = { command: cmd };
+      }
+    } else {
+      arr.push({ command: cmd });
+    }
+  };
+
   if (!Array.isArray(target.PreToolUse)) target.PreToolUse = [];
-  const preEntry = { command: preToolCmd };
-  const preIdx = target.PreToolUse.findIndex(entry => {
-    const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
-    return cmd.includes('interceptor.js');
-  });
-  if (preIdx !== -1) target.PreToolUse[preIdx] = preEntry;
-  else target.PreToolUse.push(preEntry);
+  updateOrPushHook(target.PreToolUse, preToolCmd);
 
   if (engine !== 'claude') {
     if (!Array.isArray(target.PostToolUse)) target.PostToolUse = [];
-    const postEntry = { command: postToolCmd };
-    const postIdx = target.PostToolUse.findIndex(entry => {
-      const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
-      return cmd.includes('interceptor.js');
-    });
-    if (postIdx !== -1) target.PostToolUse[postIdx] = postEntry;
-    else target.PostToolUse.push(postEntry);
+    updateOrPushHook(target.PostToolUse, postToolCmd);
   }
 
   if (!Array.isArray(target.Stop)) target.Stop = [];
-  const stopEntry = { command: stopCmd };
-  const stopIdx = target.Stop.findIndex(entry => {
-    const cmd = typeof entry === 'string' ? entry : (entry?.command || '');
-    return cmd.includes('interceptor.js');
-  });
-  if (stopIdx !== -1) target.Stop[stopIdx] = stopEntry;
-  else target.Stop.push(stopEntry);
+  updateOrPushHook(target.Stop, stopCmd);
 
   return config;
 }
