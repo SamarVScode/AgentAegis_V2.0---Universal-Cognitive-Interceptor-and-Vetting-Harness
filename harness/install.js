@@ -241,7 +241,8 @@ export function installClaudeHooks(targetDir, interceptorPath, dryRun = false) {
   let existing = {};
   if (fs.existsSync(settingsFile)) {
     try {
-      existing = JSON.parse(fs.readFileSync(settingsFile, 'utf8'));
+      const raw = fs.readFileSync(settingsFile, 'utf8').replace(/^\uFEFF/, '');
+      existing = JSON.parse(raw);
     } catch {
       existing = {};
     }
@@ -302,7 +303,8 @@ export function installAntigravityHooks(targetDir, interceptorPath, dryRun = fal
   let existing = {};
   if (fs.existsSync(hooksFile)) {
     try {
-      existing = JSON.parse(fs.readFileSync(hooksFile, 'utf8'));
+      const raw = fs.readFileSync(hooksFile, 'utf8').replace(/^\uFEFF/, '');
+      existing = JSON.parse(raw);
     } catch {
       existing = {};
     }
@@ -481,9 +483,20 @@ export function runInstall(options = {}) {
   console.log('  2. Run your coding agent normally (Claude Code, Cursor, or Antigravity)');
   console.log('================================================================================\n');
 
-  const mainConfig = results[0] ? JSON.parse(results[0].content) : buildMergedHooksConfig({}, 'antigravity', interceptorPath);
-  if (mainConfig && !mainConfig.hooks) {
-    const guard = mainConfig['aegis-guard'] || mainConfig;
+  let mainConfig;
+  if (results[0]?.content) {
+    try {
+      const raw = results[0].content.replace(/^\uFEFF/, '');
+      mainConfig = JSON.parse(raw);
+    } catch {
+      mainConfig = buildMergedHooksConfig({}, 'antigravity', interceptorPath);
+    }
+  } else {
+    mainConfig = buildMergedHooksConfig({}, 'antigravity', interceptorPath);
+  }
+
+  if (mainConfig) {
+    const rawHooks = mainConfig['aegis-guard'] || mainConfig.hooks || mainConfig;
     const extractCmd = (item) => {
       if (typeof item === 'string') return item;
       if (item?.command) return item.command;
@@ -491,8 +504,8 @@ export function runInstall(options = {}) {
       return '';
     };
     mainConfig.hooks = {
-      PreToolUse: (guard.PreToolUse || []).map(entry => ({ command: extractCmd(entry) })),
-      Stop: (guard.Stop || []).map(entry => ({ command: extractCmd(entry) }))
+      PreToolUse: (rawHooks.PreToolUse || []).map(entry => ({ command: extractCmd(entry) })),
+      Stop: (rawHooks.Stop || []).map(entry => ({ command: extractCmd(entry) }))
     };
   }
   return {

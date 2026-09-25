@@ -27,7 +27,7 @@ import { recordDecision } from './decision-tracker.js';
 const rawArgs = process.argv.slice(2);
 const engineIdx = rawArgs.indexOf('--engine');
 const engine = engineIdx !== -1 ? rawArgs[engineIdx + 1] : (tty.isatty(0) ? 'claude' : 'antigravity');
-const cleanArgs = rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 1);
+const cleanArgs = engineIdx !== -1 ? rawArgs.filter((_, i) => i !== engineIdx && i !== engineIdx + 1) : [...rawArgs];
 
 const [mode = 'pre-tool', arg1, arg2] = cleanArgs;
 
@@ -270,6 +270,8 @@ export async function runInterceptor() {
 
     const targetFile = toolArgs.TargetFile || toolArgs.file_path || toolArgs.path || toolArgs.target || toolArgs.AbsolutePath || toolArgs.CommandLine || toolArgs.command || '';
     const newContent = toolArgs.CodeContent || toolArgs.ReplacementContent || toolArgs.content || toolArgs.code || '';
+    const isDestructive = isDestructiveAction(toolName, toolArgs);
+    const cmdStr = (toolArgs.command || toolArgs.CommandLine || toolArgs.cmd || toolArgs.script || '').toString();
 
     // Step 0: Early API Key Fail-Closed Guardrail (Blocks all tool actions if key is missing)
     if (!isApiKeyConfigured(effectiveWorkspace)) {
@@ -334,13 +336,11 @@ export async function runInterceptor() {
     }
 
     // Check if operation is destructive and set global flag for fail-closed error handling
-    const isDestructive = isDestructiveAction(toolName, toolArgs);
     if (isDestructive) {
       globalThis.__currentOperationDestructive = true;
     }
 
     // Generic command credential-exfiltration check (Issue 4 mitigation)
-    const cmdStr = (toolArgs.command || toolArgs.CommandLine || toolArgs.cmd || toolArgs.script || '').toString();
     if (cmdStr) {
       const sensitiveInCmd = inspectCommandForSensitivePaths(cmdStr);
       if (sensitiveInCmd.isSensitive) {

@@ -240,12 +240,12 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
     }
 
     const trimmedCmd = String(customCommand).trim();
-    const SAFE_RUNNERS = /^(\.?[\/\\])?(npm|yarn|pnpm|bun|node|pytest|cargo|go|gradle|gradlew(\.bat)?|make|ctest|clasp)\b/i;
+    const SAFE_RUNNERS = /^(\.?[\/\\])?(\.?\.?[\/\\])?(\.venv[/\\](bin|Scripts)[/\\]|venv[/\\](bin|Scripts)[/\\])?(npm|npx|yarn|pnpm|bun|node|pytest|poetry|pipenv|cargo|go|gradle|gradlew(\.bat)?|make|ctest|clasp)\b/i;
     if (!SAFE_RUNNERS.test(trimmedCmd)) {
       return {
         passed: false,
         stage: 'stage_1_semantic_parser',
-        reason: 'Command not permitted: acceptance gate commands must begin with a known safe runner/builder (npm, yarn, pnpm, bun, node, pytest, cargo, go, gradle, gradlew, make, ctest, clasp).'
+        reason: 'Command not permitted: acceptance gate commands must begin with a known safe runner/builder (npm, npx, yarn, pnpm, bun, node, pytest, poetry, pipenv, cargo, go, gradle, gradlew, make, ctest, clasp).'
       };
     }
 
