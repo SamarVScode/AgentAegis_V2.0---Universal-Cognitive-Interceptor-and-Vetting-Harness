@@ -232,13 +232,23 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
   }
 
   // Item 25: Fallback for clean exit code 0 when runner produces unrecognized or quiet output without failure markers
-  if (exitCode === 0 && !/\b(FAIL|FAILED|AssertionError|Error:|Errors:|Fatal)\b/i.test(combined)) {
-    return {
-      passed: true,
-      testsRun: 1,
-      fallbackSuccess: true,
-      reason: 'Test command exited with code 0 and clean output.'
-    };
+  if (exitCode === 0) {
+    const trimmed = combined.trim();
+    if (!trimmed) {
+      return {
+        passed: false,
+        testsRun: 0,
+        reason: 'Test command exited with code 0 but emitted zero test telemetry or execution output.'
+      };
+    }
+    if (!/\b(FAIL|FAILED|AssertionError|Error:|Errors:|Fatal)\b/i.test(combined)) {
+      return {
+        passed: true,
+        testsRun: 1,
+        fallbackSuccess: true,
+        reason: 'Test command exited with code 0 and clean output.'
+      };
+    }
   }
 
   // If no recognized framework telemetry pattern matched and failures or unrecognized output present, reject

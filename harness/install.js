@@ -576,6 +576,12 @@ export function runInstall(options = {}) {
       PostToolUse: (rawHooks.PostToolUse || []).map(entry => ({ command: extractCmd(entry) })),
       Stop: (rawHooks.Stop || []).map(entry => ({ command: extractCmd(entry) }))
     };
+    if (rawHooks.PreInvocation) {
+      mainConfig.hooks.PreInvocation = (rawHooks.PreInvocation || []).map(entry => ({ command: extractCmd(entry) }));
+    }
+    if (rawHooks.UserPromptSubmit) {
+      mainConfig.hooks.UserPromptSubmit = (rawHooks.UserPromptSubmit || []).map(entry => ({ command: extractCmd(entry) }));
+    }
   }
   return {
     success: true,
@@ -650,31 +656,36 @@ export function buildMergedHooksConfig(existingConfig = {}, engine = 'antigravit
     return '';
   };
 
-  const updateOrPushHook = (arr, cmd) => {
+  const updateOrPushHook = (arr, cmd, eventName = '') => {
     const idx = arr.findIndex(entry => getCmd(entry).includes('interceptor.js'));
     if (idx !== -1) {
       if (arr[idx]?.hooks?.[0]) {
         arr[idx].hooks[0].command = cmd;
+        arr[idx].command = cmd;
       } else if (typeof arr[idx] === 'object') {
         arr[idx].command = cmd;
       } else {
         arr[idx] = { command: cmd };
       }
     } else {
-      arr.push({ command: cmd });
+      const isToolHook = eventName === 'PreToolUse' || eventName === 'PostToolUse';
+      const newEntry = (isToolHook && engine === 'antigravity')
+        ? { matcher: '.*', hooks: [{ type: 'command', command: cmd }], command: cmd }
+        : { command: cmd };
+      arr.push(newEntry);
     }
   };
 
   if (!Array.isArray(target.PreToolUse)) target.PreToolUse = [];
-  updateOrPushHook(target.PreToolUse, preToolCmd);
+  updateOrPushHook(target.PreToolUse, preToolCmd, 'PreToolUse');
 
   if (engine !== 'claude') {
     if (!Array.isArray(target.PostToolUse)) target.PostToolUse = [];
-    updateOrPushHook(target.PostToolUse, postToolCmd);
+    updateOrPushHook(target.PostToolUse, postToolCmd, 'PostToolUse');
   }
 
   if (!Array.isArray(target.Stop)) target.Stop = [];
-  updateOrPushHook(target.Stop, stopCmd);
+  updateOrPushHook(target.Stop, stopCmd, 'Stop');
 
   return config;
 }

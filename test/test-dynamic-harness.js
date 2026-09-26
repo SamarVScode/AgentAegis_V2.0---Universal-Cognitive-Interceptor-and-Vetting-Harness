@@ -474,6 +474,10 @@ export function verifyToken(token) { return true; }
     const skippedRes = parseTestRunnerOutput('node', skippedOut, '', 0);
     assert(skippedRes.passed === false && skippedRes.reason === 'All tests in test suite were skipped.', '100% skipped suite rejected');
 
+    // Silent execution check (empty stdout/stderr with exitCode 0)
+    const silentRes = parseTestRunnerOutput('node', '', '', 0);
+    assert(silentRes.passed === false && silentRes.testsRun === 0, 'Silent exit 0 with empty telemetry rejected');
+
     console.log('[PASS] Module 7 (runner-parser.js) passed all tests.');
     passed++;
   } catch (err) {

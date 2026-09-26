@@ -205,6 +205,12 @@ export async function runInterceptor() {
   // HOOK 0: PRE-INVOCATION / USER PROMPT EARLY GUARDRAIL
   // -------------------------------------------------------------------------
   if (mode === 'pre-invocation' || mode === 'preInvocation' || mode === 'user-prompt' || mode === 'UserPrompt') {
+    const assistantResp = stdinPayload.statement || stdinPayload.message || stdinPayload.final_response || stdinPayload.lastAssistantResponse || stdinPayload.last_assistant_response;
+    if (assistantResp) {
+      const session = loadSession(sessionId);
+      session.lastAssistantResponse = assistantResp;
+      saveSession(session, sessionId);
+    }
     if (!isApiKeyConfigured(effectiveWorkspace)) {
       const warningMsg = '[AEGIS GUARD FATAL]: TYPESAFE_API_KEY is not configured or missing in .env. Jev System One cognitive interceptor cannot operate without a valid API key. Please configure TYPESAFE_API_KEY in .env before issuing tasks.';
       console.error(warningMsg);
@@ -728,6 +734,12 @@ export async function runInterceptor() {
   // -------------------------------------------------------------------------
   if (mode === 'post-tool' || mode === 'postToolUse') {
     const stdinData = stdinPayload;
+    const assistantResp = stdinPayload.statement || stdinPayload.message || stdinPayload.final_response || stdinPayload.lastAssistantResponse || stdinPayload.last_assistant_response;
+    if (assistantResp) {
+      const session = loadSession(sessionId);
+      session.lastAssistantResponse = assistantResp;
+      saveSession(session, sessionId);
+    }
     const isError = stdinData.isError || stdinData.error;
     const stderr = stdinData.stderr || (isError ? String(stdinData.output || '') : '');
 
@@ -803,11 +815,12 @@ export async function runInterceptor() {
       process.env.TASK_DESCRIPTION = session.taskDescription;
     }
 
+    const transcriptPath = stdinPayload.transcriptPath || stdinPayload.transcript_path;
     // Item 20: In verify-gate mode, if agentStatement is missing, fallback to extractLastAssistantResponse || session.taskDescription
     if (!agentStatement) {
       agentStatement = session.lastAssistantResponse || extractLastAssistantResponse({
         engine,
-        transcriptPath: stdinPayload.transcript_path,
+        transcriptPath,
         conversationId: sessionId
       }) || session.taskDescription || null;
     }
@@ -836,7 +849,11 @@ export async function runInterceptor() {
 }
 
 import { fileURLToPath } from 'url';
-const isDirectRun = process.argv[1] && (path.resolve(process.argv[1]) === fileURLToPath(import.meta.url) || process.argv[1].endsWith('interceptor.js'));
+const isDirectRun = process.argv[1] && (
+  process.platform === 'win32'
+    ? path.resolve(process.argv[1]).toLowerCase() === fileURLToPath(import.meta.url).toLowerCase()
+    : path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)
+);
 if (isDirectRun) {
   runInterceptor().catch(err => {
     if (err instanceof InterceptorExitSentinel || err?.name === 'InterceptorExitSentinel') {
