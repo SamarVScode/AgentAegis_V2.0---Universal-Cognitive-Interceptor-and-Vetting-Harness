@@ -191,7 +191,7 @@ export function saveSession(session, sessionId = 'default') {
  * - Trivial churn (<15% variance): Hard breaker trips at 3 repeats.
  * - Substantive edits (>=15% variance): Breaker allows up to 5 repeats.
  */
-export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff = '', sessionId = 'default', isMutation = null) {
+export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff = '', sessionId = 'default', isMutation = null, isCommand = false) {
   const session = loadSession(sessionId);
   const key = `${toolName}:${targetFile || ''}`;
 
@@ -215,11 +215,14 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
     session.fileEditSnapshots[targetFile] = String(currentContentOrDiff).slice(0, 25000);
   }
 
+  const effectiveCommand = Boolean(isCommand || (!isReadOnly && (toolName === 'run_command' || (toolName && toolName.toLowerCase().includes('command')) || toolName === 'Bash')));
+
   session.rollingHistory.push({
     key,
     tool: toolName,
     targetFile,
     isMutation: effectiveMutation,
+    isCommand: Boolean(isCommand || effectiveCommand),
     variance: effectiveMutation ? editClassification.variance : 1.0,
     timestamp: Date.now()
   });
@@ -316,10 +319,8 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
   }
 
   // 2. Direct consecutive identical actions for tools without a targetFile (e.g. repeated identical commands)
-  if (!targetFile && len >= 3 && !SUPERVISOR_POLL_TOOLS.has(toolName)) {
-    const prev1 = history[len - 2]?.key;
-    const prev2 = history[len - 3]?.key;
-    if (prev1 === key && prev2 === key) {
+  if ((!targetFile || isCommand || effectiveCommand) && len >= 3 && !SUPERVISOR_POLL_TOOLS.has(toolName)) {
+    if (history[len - 1]?.key === history[len - 2]?.key && history[len - 2]?.key === history[len - 3]?.key) {
       return {
         isThrashing: true,
         reason: 'consecutive_identical_tool',
@@ -330,7 +331,7 @@ export function checkCycle(toolName = '', targetFile = '', currentContentOrDiff 
   }
 
   // 3. Oscillating ping-pong cycle detection (A -> B -> A -> B)
-  if (effectiveMutation && len >= 4) {
+  if ((effectiveMutation || isCommand || effectiveCommand) && len >= 4) {
     const a1 = history[len - 1]?.key;
     const b1 = history[len - 2]?.key;
     const a2 = history[len - 3]?.key;

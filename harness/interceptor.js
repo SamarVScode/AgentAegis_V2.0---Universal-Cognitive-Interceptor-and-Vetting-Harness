@@ -154,7 +154,11 @@ export async function readStdinJson(timeoutMs = null) {
           verdict: 'vetoed',
           reason: vetoReason
         });
-        exitWithDecision({ allowed: false, reason: vetoReason, mode: 'pre-tool', engine });
+        const argv = process.argv.slice(2);
+        const detectedMode = argv.find(a => ['pre-tool', 'verify-gate', 'pre-invocation', 'post-tool', 'Stop', 'pre-exit'].includes(a)) || 'pre-tool';
+        const engIdx = argv.indexOf('--engine');
+        const detectedEngine = engIdx !== -1 ? argv[engIdx + 1] : (tty.isatty(0) ? 'claude' : 'antigravity');
+        exitWithDecision({ allowed: false, reason: vetoReason, mode: detectedMode, engine: detectedEngine });
       }
     }
     return parsed;
@@ -320,7 +324,7 @@ export async function runInterceptor() {
 
     // Step 0b: Infrastructure & Harness Anti-Tamper Isolation
     // Prevents coding agents (Claude / Antigravity) from modifying, replacing, or accessing the harness directory
-    const isDevRepo = path.basename(effectiveWorkspace) === 'jev-mcp' || process.env.AEGIS_DEV_MODE === 'true';
+    const isDevRepo = path.basename(effectiveWorkspace) === 'jev-mcp' || targetFile.includes('/jev-mcp/') || targetFile.includes('\\jev-mcp\\') || process.env.AEGIS_DEV_MODE === 'true';
     const isHarnessTarget = /(^|[/\\])(harness|\.aegis|\.agents)([/\\]|$)/i.test(targetFile);
     if (!isDevRepo && isHarnessTarget && (isReadInspectionTool(toolName) || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit') || isDestructive)) {
       const tamperMsg = `[JEV SECURITY VETO]: Access denied. The 'harness' infrastructure directory is protected and not accessible to coding agents.`;
@@ -421,7 +425,8 @@ export async function runInterceptor() {
     // Step 2: Diff Variance Cycle Detector & Thrashing Circuit Breaker (Universal)
     const isReadOnly = isReadInspectionTool(toolName) || toolName === 'view_file' || toolName === 'read_file';
     const isMutation = !isReadOnly && Boolean(wholeFileContent || toolName.includes('write') || toolName.includes('replace') || toolName.includes('edit'));
-    const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId, isMutation);
+    const isCommand = !isReadOnly && (toolName === 'run_command' || toolName.toLowerCase().includes('command') || toolName === 'Bash');
+    const cycle = checkCycle(toolName, targetFile, wholeFileContent, sessionId, isMutation, isCommand);
     if (cycle.isThrashing) {
       recordDecision({
         sessionId,

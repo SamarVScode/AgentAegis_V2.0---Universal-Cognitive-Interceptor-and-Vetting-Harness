@@ -257,12 +257,55 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
 
     const trimmedCmd = String(customCommand).trim();
     const SAFE_RUNNERS = /^(\.?[\/\\])?(\.?\.?[\/\\])?(\.venv[/\\](bin|Scripts)[/\\]|venv[/\\](bin|Scripts)[/\\])?(npm|npx|yarn|pnpm|bun|node|pytest|poetry|pipenv|cargo|go|gradle|gradlew(\.bat)?|make|ctest|clasp)\b/i;
-    if (!SAFE_RUNNERS.test(trimmedCmd)) {
+    const match = trimmedCmd.match(SAFE_RUNNERS);
+    if (!match) {
       return {
         passed: false,
         stage: 'stage_1_semantic_parser',
         reason: 'Command not permitted: acceptance gate commands must begin with a known safe runner/builder (npm, npx, yarn, pnpm, bun, node, pytest, poetry, pipenv, cargo, go, gradle, gradlew, make, ctest, clasp).'
       };
+    }
+
+    const runnerName = match[0].split(/[\/\\]/).pop().replace(/\.exe$|\.bat$/i, '').toLowerCase();
+
+    if (runnerName === 'npx') {
+      const ALLOWED_NPX_TOOLS = new Set([
+        'tsc', 'jest', 'mocha', 'vitest', 'playwright', 'cypress', 'clasp',
+        'eslint', 'prettier', 'pytest', 'cargo', 'ts-node', 'c8', 'nyc',
+        'tap', 'ava', 'jasmine'
+      ]);
+      const npxRest = trimmedCmd.slice(match[0].length).trim();
+      const tokens = npxRest.split(/\s+/).filter(Boolean);
+      let targetTool = '';
+      for (const token of tokens) {
+        if (token.startsWith('-')) continue;
+        targetTool = token;
+        break;
+      }
+      const toolBase = path.basename(targetTool).toLowerCase().replace(/^@[^/]+\//, '');
+      if (!targetTool || (!ALLOWED_NPX_TOOLS.has(toolBase) && !ALLOWED_NPX_TOOLS.has(targetTool.toLowerCase()))) {
+        return {
+          passed: false,
+          stage: 'stage_1_semantic_parser',
+          reason: `Command not permitted: npx utility '${targetTool || 'unknown'}' is not an authorized build, test, or lint utility.`
+        };
+      }
+    }
+
+    if (runnerName === 'node') {
+      const nodeRest = trimmedCmd.slice(match[0].length).trim();
+      const hasScriptFile = /\.(js|mjs|cjs|ts)(["'\s]|$)/i.test(nodeRest);
+      const hasTestFlag = /(?:^|\s)--test\b/.test(nodeRest);
+      const hasEvalFlag = /(?:^|\s)(-e|--eval)\b/.test(nodeRest);
+      const hasCheckFlag = /(?:^|\s)--check\b/.test(nodeRest);
+
+      if (!hasScriptFile && !hasTestFlag && !hasEvalFlag && !hasCheckFlag) {
+        return {
+          passed: false,
+          stage: 'stage_1_semantic_parser',
+          reason: 'Command not permitted: node invocation in acceptance gate must run a script file (.js, .mjs, .cjs, .ts), --test, -e, or --check.'
+        };
+      }
     }
 
     // Disallow shell chaining and control operators to prevent command injection

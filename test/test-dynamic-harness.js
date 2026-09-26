@@ -399,6 +399,21 @@ export function verifyToken(token) { return true; }
     const pollVeto = checkCycle('manage_subagents', '', '', testSession);
     assert(pollVeto.isThrashing === true && pollVeto.reason === 'supervisor_polling_veto', 'Supervisor polling tripped veto at 5');
 
+    // 6. Consecutive identical command thrashing
+    clearHistory(testSession);
+    checkCycle('run_command', 'npm test', '', testSession, false, true);
+    checkCycle('run_command', 'npm test', '', testSession, false, true);
+    const cmdTrip = checkCycle('run_command', 'npm test', '', testSession, false, true);
+    assert(cmdTrip.isThrashing === true && cmdTrip.reason === 'consecutive_identical_tool', 'Consecutive identical command tripped at 3');
+
+    // 7. Alternating command thrashing (A -> B -> A -> B)
+    clearHistory(testSession);
+    checkCycle('run_command', 'npm test', '', testSession, false, true);
+    checkCycle('run_command', 'npm run build', '', testSession, false, true);
+    checkCycle('run_command', 'npm test', '', testSession, false, true);
+    const cmdOscTrip = checkCycle('run_command', 'npm run build', '', testSession, false, true);
+    assert(cmdOscTrip.isThrashing === true && cmdOscTrip.reason === 'oscillating_loop', 'Alternating command thrashing tripped at 4');
+
     clearHistory(testSession);
 
     console.log('[PASS] Module 6 (cycle-detector.js) passed all tests.');
@@ -487,6 +502,14 @@ export function verifyToken(token) { return true; }
     // Shell chaining injection check (Issue 3 mitigation)
     const chainedGate = await verifyAcceptanceGate('npm test && echo injected');
     assert(chainedGate.passed === false && chainedGate.reason.includes('forbidden in acceptance gate custom commands'), 'Chained command rejected');
+
+    // Unauthorized npx utility check
+    const badNpx = await verifyAcceptanceGate('npx evil-package');
+    assert(badNpx.passed === false && badNpx.reason.includes('not an authorized build, test, or lint utility'), 'Unauthorized npx utility blocked');
+
+    // Invalid node invocation check
+    const badNode = await verifyAcceptanceGate('node malicious.exe');
+    assert(badNode.passed === false && badNode.reason.includes('must run a script file'), 'Invalid node invocation blocked');
 
     // Successful test verification with real Jev gate
     const passCmd = 'node test.js';
