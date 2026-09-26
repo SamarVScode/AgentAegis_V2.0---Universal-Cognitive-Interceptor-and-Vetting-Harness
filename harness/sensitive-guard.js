@@ -125,10 +125,12 @@ export function inspectCommandForSensitivePaths(cmdStr = '', workspaceDir = proc
     /\b(fs\.readFileSync|open\s*\()[^)]*(\.env|id_rsa|id_ed25519|passwd|shadow)/i
   ];
 
-  // Strip git commit messages and script eval parameters (Item 16)
+  // Strip git commit messages, script eval parameters, echo literals, and search patterns
   const sanitized = cmdStr
     .replace(/(?:-[a-zA-Z]*m|--message)(?:\s+|=)(?:"[\s\S]*?"|'[\s\S]*?'|`[\s\S]*?`|[^\s]+)/gi, '')
-    .replace(/(?:-e|--eval|-c)(?:\s+|=)(?:"[\s\S]*?"|'[\s\S]*?'|`[\s\S]*?`)/gi, '');
+    .replace(/(?:-e|--eval|-c)(?:\s+|=)(?:"[\s\S]*?"|'[\s\S]*?'|`[\s\S]*?`)/gi, '')
+    .replace(/\b(?:echo|printf)\s+(?:"[\s\S]*?"|'[\s\S]*?'|`[\s\S]*?`)/gi, '')
+    .replace(/\b(?:grep|rg|findstr)\b(?:\s+-[a-zA-Z]+)*\s+(?:"[\s\S]*?"|'[\s\S]*?')/gi, '');
 
   const customPatterns = getCustomDenyPatterns(workspaceDir);
   const allPatterns = [...commandSensitivePatterns, ...customPatterns];

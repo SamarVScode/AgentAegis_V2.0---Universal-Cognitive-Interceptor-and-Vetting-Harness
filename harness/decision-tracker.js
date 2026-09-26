@@ -35,14 +35,23 @@ export function findAuditLogPath(targetDir = process.cwd()) {
   if (['.agents', '.claude', '.cursor'].includes(path.basename(curr))) {
     curr = path.dirname(curr);
   }
+  // If current directory already has .aegis/decision-audit.jsonl, use it immediately
+  const localCandidate = path.join(curr, '.aegis', DEFAULT_AUDIT_FILENAME);
+  if (fs.existsSync(localCandidate)) {
+    return localCandidate;
+  }
   const root = path.parse(curr).root;
-  while (curr) {
-    const candidate = path.join(curr, '.aegis', DEFAULT_AUDIT_FILENAME);
+  let ptr = curr;
+  while (ptr && ptr !== root) {
+    const candidate = path.join(ptr, '.aegis', DEFAULT_AUDIT_FILENAME);
     if (fs.existsSync(candidate)) {
       return candidate;
     }
-    if (curr === root) break;
-    curr = path.dirname(curr);
+    // Stop search at git boundary so child repositories in monorepos do not bleed into parent
+    if (fs.existsSync(path.join(ptr, '.git')) && ptr !== curr) {
+      break;
+    }
+    ptr = path.dirname(ptr);
   }
   return getAuditLogPath(targetDir);
 }

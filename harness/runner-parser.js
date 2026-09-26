@@ -27,7 +27,7 @@ export function triageStderr(stderr = '') {
   };
 }
 
-export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = '', exitCode = 0) {
+export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = '', exitCode = 0, options = {}) {
   // 1. If process exited with non-zero code, it failed deterministically
   if (exitCode !== 0) {
     return {
@@ -202,7 +202,8 @@ export function parseTestRunnerOutput(ecosystem = 'node', stdout = '', stderr = 
       if (/error TS\d+:/i.test(combined)) {
         return { passed: false, reason: 'TypeScript compilation errors detected in GAS backend.' };
       }
-      const isBuildCheck = /clasp\s+(status|push)|tsc\s+--noEmit/i.test(combined) || !/test/i.test(combined);
+      const cmd = String(options.command || options.testCommand || '').toLowerCase();
+      const isBuildCheck = /clasp\s+(status|push)|tsc\s+--noEmit/i.test(cmd) || /clasp\s+(status|push)|tsc\s+--noEmit/i.test(combined) || !/test/i.test(cmd || combined);
       return {
         passed: true,
         testsRun: 1,

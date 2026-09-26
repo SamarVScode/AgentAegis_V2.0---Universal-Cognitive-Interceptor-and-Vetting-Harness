@@ -45,7 +45,7 @@ export function getShadowPaths(sessionId = 'default', targetFile = '') {
 }
 
 /**
- * Reconstructs virtual whole-file buffer in memory and caches shadow copy under .jev/<sessionId>/shadow/
+ * Reconstructs virtual whole-file buffer in memory and caches shadow copy under ~/.aegis-harness/<sessionId>/shadow/
  */
 export function reconstructShadowBuffer(targetFile = '', targetContent = '', replacementContent = '', sessionId = 'default') {
   if (!targetFile) return replacementContent || '';
@@ -88,7 +88,7 @@ export function reconstructShadowBuffer(targetFile = '', targetContent = '', rep
 }
 
 /**
- * Prunes old session directories from .jev/
+ * Prunes old session directories from ~/.aegis-harness/
  */
 export function pruneOldSessions(maxSessions = 20, maxAgeHours = 48, baseDir = null) {
   const jevDir = baseDir || path.join(os.homedir(), '.aegis-harness');

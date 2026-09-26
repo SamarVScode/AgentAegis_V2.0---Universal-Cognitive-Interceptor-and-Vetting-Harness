@@ -9,7 +9,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { exec, spawn } from 'child_process';
+import { exec, spawn, spawnSync } from 'child_process';
 import { promisify } from 'util';
 import { detectWorkspaceEcosystem } from './manifest-sniffer.js';
 import { parseTestRunnerOutput, triageStderr } from './runner-parser.js';
@@ -59,7 +59,7 @@ export function safeSpawnAsync(commandStr, options = {}) {
       timedOut = true;
       try {
         if (process.platform === 'win32' && child.pid) {
-          spawn('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
+          spawnSync('taskkill', ['/pid', child.pid.toString(), '/T', '/F']);
         } else {
           child.kill('SIGTERM');
         }
@@ -346,7 +346,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
       if (err.killed || (typeof err.message === 'string' && err.message.includes('timed out'))) {
         isTimeout = true;
         exitCode = 124;
-      } else if (err.isMaxBuffer || err.code === 'ERR_CHILD_PROCESS_STDIO_MAXBUFFER' || err.code === 'MAXBUFFER') {
+      } else if (err.isMaxBuffer) {
         isMaxBuffer = true;
         exitCode = 1;
       } else {
@@ -384,7 +384,7 @@ export async function verifyAcceptanceGate(customCommand = null, targetDir = nul
   // Step 1: Deterministic semantic regex parsing
   const parsedRun = isNoContract
     ? { passed: true, testsRun: 0, reason: 'No test contract detected in workspace; Stage 1 skipped.' }
-    : parseTestRunnerOutput(workspace.ecosystem, stdout, stderr, exitCode);
+    : parseTestRunnerOutput(workspace.ecosystem, stdout, stderr, exitCode, { command: testCommand });
 
   // Step 1.5 (Lie Detector): If agentStatement is provided, call extractVerifiableClaims and reconcileClaimsWithGroundTruth
   let reconciliationResult = null;
